@@ -25,6 +25,9 @@ REAL_TOKENS = [12, 7]  # prompt tokens per sample, the rest is padding
 
 
 def main():
+    # Full float32 matrix products. On GPUs, JAX by default multiplies float32 matrices with
+    # TF32 (~3 significant digits), which alone makes the two computations differ by ~1e-4.
+    jax.config.update("jax_default_matmul_precision", "highest")
     config = pi0_config.Pi0Config(
         pi05=True, paligemma_variant="dummy", action_expert_variant="dummy", dtype="float32", max_token_len=PROMPT_LEN
     )
