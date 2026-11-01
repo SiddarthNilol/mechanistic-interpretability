@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=extract-heads
 #SBATCH --account=torch_pr_564_tandon_advanced
-#SBATCH --partition=h200_tandon,h200_public
-#SBATCH --gres=gpu:h200:1
+#SBATCH --partition=h100_tandon,h100
+#SBATCH --gres=gpu:h100:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=02:00:00
