@@ -1,0 +1,9 @@
+stream,target,task,k,cv,best,top20,median,top20_vs_control,top20_vs_median,overlap,rank_correlation,new_episodes_gain,new_episodes_worst,other_task_overlap,phase_overlap_same,phase_overlap_other
+action,motion,hook ring,40,0.069,2.67,2.764,3.086,23.513,10.428,42.0,0.619,5.949,-8.264,41.75,32.25,26.283
+action,motion,unhook ring,40,0.053,2.782,2.855,3.085,18.64,7.465,33.0,0.511,3.923,-5.141,41.75,27.917,21.667
+action,position,hook ring,40,0.184,3.07,3.291,3.867,62.063,14.899,33.5,0.435,5.895,-25.559,38.5,27.833,25.667
+action,position,unhook ring,30,0.316,1.571,1.773,2.299,74.798,22.882,45.0,0.65,13.217,-49.019,38.5,35.917,29.817
+vlm,motion,hook ring,40,0.069,2.684,2.79,3.142,21.774,11.189,46.0,0.684,6.349,-9.825,39.5,34.917,30.1
+vlm,motion,unhook ring,40,0.041,2.856,2.91,3.12,16.975,6.742,33.5,0.313,2.796,-3.498,39.5,26.0,20.983
+vlm,position,hook ring,40,0.211,3.2,3.413,4.473,59.935,23.683,56.0,0.538,16.319,-19.624,47.5,43.583,41.117
+vlm,position,unhook ring,30,0.31,1.722,1.901,2.709,73.022,29.809,52.5,0.652,16.872,-36.482,47.5,41.333,38.067

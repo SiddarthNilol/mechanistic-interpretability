@@ -1,0 +1,21 @@
+stream   target        task  k    cv  top20  median  top20_vs_control  top20_vs_median  overlap  rank_correlation  new_episodes_gain  new_episodes_worst  other_task_overlap  phase_overlap_same  phase_overlap_other
+action   motion   hook ring 40 0.036  2.732   2.852            23.254            4.220     22.0             0.277              0.570              -2.946               24.75              18.250               17.850
+action   motion unhook ring 40 0.029  2.854   3.029            18.347            5.786     21.0             0.006              0.624               0.211               24.75              21.833               17.250
+action position   hook ring 40 0.096  3.405   4.072            59.356           16.387     56.0             0.609             12.633              -8.089               47.25              45.917               41.950
+action position unhook ring 30 0.139  2.227   2.902            67.860           23.249     46.5             0.477             14.197              -8.810               47.25              41.833               36.867
+   vlm   motion   hook ring 40 0.046  2.769   2.877            21.981            3.750     16.5             0.217              0.339              -2.243               22.00              17.833               16.817
+   vlm   motion unhook ring 40 0.034  2.870   3.087            18.018            7.052     26.5             0.134              1.273              -0.684               22.00              28.500               19.733
+   vlm position   hook ring 40 0.229  3.331   4.113            60.670           19.015     73.5             0.634             16.814             -22.443               67.00              56.583               55.683
+   vlm position unhook ring 30 0.241  2.116   3.225            69.329           34.392     64.0             0.659             23.036             -21.884               67.00              48.833               48.367
+
+most repeatable heads (share of splits with the head in the top 20 of both halves; noise heads reach 0.5):
+  action motion hook ring L7H3:0.50 L9H3:0.40 L9H5:0.40 L9H2:0.30 L8H2:0.30 L6H3:0.30
+  action motion unhook ring L2H3:0.70 L6H3:0.60 L3H5:0.30 L0H5:0.30 L1H4:0.30 L2H1:0.30
+  action position hook ring L3H6:1.00 L5H7:0.90 L2H0:0.80 L2H1:0.70 L2H3:0.70 L1H0:0.60
+  action position unhook ring L2H3:1.00 L2H4:0.80 L3H6:0.80 L2H2:0.80 L3H5:0.80 L5H7:0.70
+  vlm motion hook ring L12H4:0.70 L2H5:0.20 L14H6:0.20 L3H3:0.20 L8H4:0.20 L0H4:0.10
+  vlm motion unhook ring L0H0:0.50 L4H5:0.50 L2H5:0.50 L0H6:0.40 L0H3:0.40 L2H0:0.40
+  vlm position hook ring L3H1:1.00 L2H7:1.00 L3H0:1.00 L6H0:1.00 L5H3:0.90 L7H4:0.90
+  vlm position unhook ring L2H7:1.00 L2H5:1.00 L2H6:0.90 L2H0:0.90 L2H2:0.90 L5H2:0.90
+
+wrote /scratch/sk12590/mechanistic-interpretability/pi05_base_images/action_report.csv and /scratch/sk12590/mechanistic-interpretability/pi05_base_images/figures
