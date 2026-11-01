@@ -22,6 +22,12 @@ h = softmax(q k^T / sqrt(d)) v (eq. 1 of the paper), a 256-dim vector:
 The noise is the same for every frame, so the suffix pass differs between frames only
 through what it reads from the prefix.
 
+Both the task and the state are text in the prompt, so heads can tell tasks and phases
+apart by reading it. Two options take that away, leaving only the images to differ:
+
+    --prompt ring    the same task text for every frame
+    --mean-state     the dataset's mean state for every frame
+
 Writes to --out, row i of every array = row i of frames.csv:
 
     heads_vlm.npy      (frames, 18, 8, 256) float32   head outputs (layer, head, dim)
@@ -162,9 +168,10 @@ def make_forward(model, sink: list):
 # -- model inputs ------------------------------------------------------------------
 
 
-def state_quantiles(dataset: Path) -> tuple[np.ndarray, np.ndarray]:
-    """1st and 99th percentile of every state dim over all frames of the non-excluded
-    episodes: openpi's quantile normalization for pi0.5 maps them to -1 and 1."""
+def state_stats(dataset: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """1st percentile, 99th percentile and mean of every state dim over all frames of the
+    non-excluded episodes. openpi's quantile normalization for pi0.5 maps the percentiles
+    to -1 and 1."""
     excluded = set(read_excluded(dataset))
     states = []
     for path in sorted((dataset / "data").glob("*/*.parquet")):
@@ -172,7 +179,7 @@ def state_quantiles(dataset: Path) -> tuple[np.ndarray, np.ndarray]:
         table = table[~table["episode_index"].isin(excluded)]
         states.append(np.stack(table[STATE].to_numpy()))
     states = np.concatenate(states).astype(np.float64)
-    return np.quantile(states, 0.01, axis=0), np.quantile(states, 0.99, axis=0)
+    return np.quantile(states, 0.01, axis=0), np.quantile(states, 0.99, axis=0), states.mean(axis=0)
 
 
 def normalize_state(state: np.ndarray, q01: np.ndarray, q99: np.ndarray) -> np.ndarray:
@@ -181,15 +188,18 @@ def normalize_state(state: np.ndarray, q01: np.ndarray, q99: np.ndarray) -> np.n
     return np.clip((state - q01) / (q99 - q01 + 1e-6) * 2.0 - 1.0, -1.0, 1.0)
 
 
-def episode_inputs(dataset, episodes, ep, frame_indices, task, q01, q99, tokenizer) -> dict[str, np.ndarray]:
+def episode_inputs(dataset, episodes, ep, frame_indices, task, q01, q99, tokenizer, fixed_state=None) -> dict:
     """Model inputs for some frames of one episode: images per camera slot (n, 224, 224, 3)
-    uint8, the normalized state (n, 25), and the prompt tokens and mask (n, 200)."""
+    uint8, the normalized state (n, 25), and the prompt tokens and mask (n, 200). With
+    `fixed_state` (25,), every frame gets that state instead of its own."""
     wanted = set(int(f) for f in frame_indices)
     images = {}
     for slot, feature in CAMERAS.items():
         decoded = {i: np.asarray(img) for i, img in iter_video_frames(dataset, episodes, ep, feature) if i in wanted}
         images[slot] = resize_with_pad(np.stack([decoded[f] for f in frame_indices]), 224, 224)
     state = np.stack(read_episode_frames(dataset, episodes, ep)[STATE].to_numpy())[frame_indices]
+    if fixed_state is not None:
+        state = np.broadcast_to(fixed_state, state.shape)
     state = normalize_state(state.astype(np.float64), q01, q99)
     tokens, token_mask = zip(*(tokenizer.tokenize(task, s) for s in state))
     return {"images": images, "state": state, "tokens": np.stack(tokens), "token_mask": np.stack(token_mask)}
@@ -219,6 +229,8 @@ def main():
     parser.add_argument("--params", default=BASE_PARAMS, help="model weights (default: the released pi05_base)")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--seed", type=int, default=0, help="seed of the action noise shared by all frames")
+    parser.add_argument("--prompt", help="task text for every frame (default: each frame's task)")
+    parser.add_argument("--mean-state", action="store_true", help="give every frame the dataset's mean state")
     args = parser.parse_args()
 
     frames = pd.read_csv(args.frames)
@@ -228,7 +240,7 @@ def main():
     params = _model.restore_params(download.maybe_download(args.params), dtype=jnp.bfloat16)
     model = config.load(params)
     tokenizer = PaligemmaTokenizer(config.max_token_len)
-    q01, q99 = state_quantiles(args.dataset)
+    q01, q99, mean_state = state_stats(args.dataset)
     noise = jax.random.normal(jax.random.key(args.seed), (1, config.action_horizon, config.action_dim))
     sink = []
     forward = make_forward(model, sink)
@@ -252,7 +264,8 @@ def main():
     for e, (ep, ep_frames) in enumerate(frames.groupby("episode_index", sort=False)):
         task = ep_frames["task"].iloc[0]
         inputs = episode_inputs(
-            args.dataset, episodes, ep, ep_frames["frame_index"].to_numpy(), task, q01, q99, tokenizer
+            args.dataset, episodes, ep, ep_frames["frame_index"].to_numpy(), args.prompt or task, q01, q99,
+            tokenizer, mean_state if args.mean_state else None,
         )
         out["tokens"][ep_frames.index] = inputs["tokens"]
         for start in range(0, len(ep_frames), args.batch_size):
@@ -276,6 +289,8 @@ def main():
         "params": args.params,
         "flow_time": FLOW_TIME,
         "noise_seed": args.seed,
+        "prompt": args.prompt or "each frame's task",
+        "state": "dataset mean" if args.mean_state else "each frame's",
         "cameras": CAMERAS,
         "layers": layers,
         "heads_per_layer": heads,

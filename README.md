@@ -176,3 +176,19 @@ tasks apart without looking at the scene.
 `figures/`: `heatmaps.png` (label x stream, top 20 outlined), `phases_{hook,unhook}.png`
 (each phase's recall above control, per head), `overlap.png` (top-20 heads shared by
 two labels), `top_heads.csv`.
+
+## Removing the text shortcuts
+
+The task and the state are both text in the prompt, so heads can score on task and phase
+by reading rather than looking. Two checks:
+
+- `analysis/attention_groups.py --heads $H` splits each head's attention into cameras,
+  task words, state numbers, the rest of the prompt (incl. `<bos>`, often a "sink" that
+  absorbs attention) and action tokens, and compares each label's top heads with all heads.
+- `extract_heads.py --prompt ring --mean-state` gives every frame the same prompt text
+  and the dataset's mean state, so only the images differ between frames. Rerun steps 3-4
+  on its output and compare with the normal run.
+
+```bash
+OUT=$SCRATCH/mechanistic-interpretability/pi05_base_images sbatch extraction/extract_job.sh --prompt ring --mean-state
+```
