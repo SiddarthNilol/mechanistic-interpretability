@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase annotation</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --panel: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #ddddd8;
+    --accent: #2563eb; --ok: #15803d; --warn: #b45309; --err: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; }
+  #progress { color: var(--muted); }
+  #layout { display: grid; grid-template-columns: 210px 1fr; min-height: calc(100vh - 45px); }
+  nav { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
+  nav button { display: flex; justify-content: space-between; width: 100%; padding: 7px 12px; border: 0; border-bottom: 1px solid var(--line);
+               background: none; font: inherit; text-align: left; cursor: pointer; }
+  nav button:hover { background: #f0f0ec; }
+  nav button.current { background: #e8efff; font-weight: 600; }
+  .done { color: var(--ok); } .flag { color: var(--warn); }
+  main { padding: 14px 16px; min-width: 0; }
+  #cameras { display: flex; gap: 10px; }
+  #cameras figure { margin: 0; flex: 1; min-width: 0; }
+  #cameras img { width: 100%; background: #222; display: block; aspect-ratio: 16 / 9; object-fit: contain; }
+  #cameras figcaption { color: var(--muted); font-size: 12px; }
+  #status { display: flex; gap: 18px; margin: 8px 0 4px; font-variant-numeric: tabular-nums; }
+  #phase { font-weight: 600; padding: 0 6px; border-radius: 3px; color: #fff; }
+  canvas { width: 100%; height: 110px; display: block; background: var(--panel); border: 1px solid var(--line); cursor: crosshair; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+  button.b { padding: 5px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font: inherit; cursor: pointer; }
+  button.b:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary kbd { background: none; color: #fff; border-color: rgba(255, 255, 255, .6); }
+  table { border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
+  td, th { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  td input { width: 70px; font: inherit; }
+  kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; background: #fafafa; font-size: 12px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  #info { color: var(--muted); margin: 6px 0; }
+  #note { color: var(--warn); }
+  #message { min-height: 20px; }
+  #message.err { color: var(--err); } #message.ok { color: var(--ok); }
+  #finished { display: none; margin: 10px 0; padding: 10px 14px; background: #ecfdf3; border: 1px solid #a7e3bd; border-radius: 4px; }
+  #finished pre { margin: 6px 0 0; font-size: 12px; }
+  .help { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Phase annotation</h1>
+  <span id="progress"></span>
+</header>
+<div id="layout">
+  <nav id="episodes"></nav>
+  <main>
+    <div id="finished"><b>All episodes reviewed: frames.csv written.</b><pre id="summary"></pre></div>
+    <div id="info"></div>
+    <div id="cameras">
+      <figure><img id="img-head" alt="head camera"><figcaption>head camera</figcaption></figure>
+      <figure><img id="img-wrist" alt="wrist camera"><figcaption id="wrist-caption">wrist camera</figcaption></figure>
+    </div>
+    <div id="status">
+      <span>frame <b id="frame"></b> / <span id="length"></span></span>
+      <span>phase <span id="phase"></span></span>
+      <span>gripper <b id="grip"></b></span>
+      <span id="loading" class="help"></span>
+    </div>
+    <canvas id="timeline"></canvas>
+    <div class="row">
+      <button class="b" data-step="-10">&laquo; 10</button>
+      <button class="b" data-step="-1">&lsaquo; 1</button>
+      <button class="b" id="play">play</button>
+      <button class="b" data-step="1">1 &rsaquo;</button>
+      <button class="b" data-step="10">10 &raquo;</button>
+      <span class="help">&nbsp;<kbd>&larr;</kbd><kbd>&rarr;</kbd> step, <kbd>shift</kbd> &times;10, <kbd>space</kbd> play,
+        click/drag the timeline to seek, drag a marker to move it</span>
+    </div>
+    <table>
+      <thead><tr><th>key</th><th>boundary</th><th>frame</th><th>auto</th><th></th><th>means</th></tr></thead>
+      <tbody id="bounds"></tbody>
+    </table>
+    <div class="row">
+      <button class="b" id="reset">reset to auto</button>
+      <button class="b primary" id="save">Save &amp; next <kbd>enter</kbd></button>
+      <span id="message"></span>
+    </div>
+  </main>
+</div>
+<script>
+const BOUNDS = ["t_align", "t_grasp", "t_closed", "t_pipe", "t_release"];
+const MEANING = {
+  t_align: "end effector settles near the ring (within ~5 cm of the grasp)",
+  t_grasp: "gripper starts closing",
+  t_closed: "gripper closed on the ring",
+  t_pipe: null,  // depends on the task, see meaning()
+  t_release: "gripper opens: ring let go",
+};
+const COLORS = { approach: "#8a8a8a", align: "#1f77b4", grasp: "#ff7f0e", unhook: "#d62728",
+                 hook: "#8c564b", carry: "#2ca02c", retract: "#9467bd", hold: "#e377c2" };
+const meaning = (k) => k !== "t_pipe" ? MEANING[k] :
+  `first frame the ring is ${ep().starts_on_pipe ? "off" : "on"} the pipe  (annotate this)`;
+
+let episodes = [], cur = 0, frame = 0, bounds = {}, dirty = false, playing = null, dragging = null;
+const $ = (id) => document.getElementById(id);
+const ep = () => episodes[cur];
+
+// Phase of frame f: the number of boundaries at or before f, as in common.phase_ids.
+// Until t_pipe is set, the held segment shows as "hold".
+function phaseAt(f, b) {
+  let i = 0;
+  for (const k of BOUNDS) {
+    const cut = b[k] ?? (k === "t_pipe" ? b.t_release : null);
+    if (cut === null || f < cut) break;
+    i++;
+  }
+  return i === 3 && b.t_pipe === null ? "hold" : ep().phases[i];
+}
+
+// Same check as common.check_boundaries.
+function problem(b, length) {
+  for (const k of BOUNDS) if (b[k] === null) return `${k} is not set`;
+  const v = [0, ...BOUNDS.map((k) => b[k]), length];
+  for (let i = 1; i < v.length; i++)
+    if (v[i] < v[i - 1]) return `out of order: ${["0", ...BOUNDS, "length"][i]} is before ${["0", ...BOUNDS, "length"][i - 1]}`;
+  return null;
+}
+
+// -- episode list --------------------------------------------------------------
+
+function renderList() {
+  $("episodes").innerHTML = "";
+  episodes.forEach((e, i) => {
+    const b = document.createElement("button");
+    b.className = i === cur ? "current" : "";
+    b.innerHTML = `<span>ep ${e.episode_index} <span class="help">${e.task.split(" ")[0]} &middot; ${e.info.active_arm}</span>` +
+      (e.note ? ' <span class="flag" title="' + e.note + '">!</span>' : "") + "</span>" +
+      (e.reviewed ? '<span class="done">&#10003;</span>' : "");
+    b.onclick = () => openEpisode(i);
+    $("episodes").appendChild(b);
+  });
+  const n = episodes.filter((e) => e.reviewed).length;
+  $("progress").textContent = `${n} / ${episodes.length} reviewed`;
+}
+
+function openEpisode(i) {
+  if (dirty && i !== cur && !confirm("Discard unsaved changes to this episode?")) return;
+  stop();
+  cur = i; dirty = false;
+  bounds = { ...ep().boundaries };
+  frame = bounds.t_closed ?? 0;  // start where t_pipe has to be found
+  $("length").textContent = ep().length - 1;
+  $("wrist-caption").textContent = `${ep().info.active_arm} wrist camera (active arm)`;
+  $("info").innerHTML = Object.entries(ep().info).map(([k, v]) => `${k}: <b>${v}</b>`).join(" &middot; ") +
+    (ep().note ? ` &middot; <span id="note">${ep().note}</span>` : "");
+  setMessage("");
+  renderList(); renderBounds(); showFrame();
+  const next = episodes[(cur + 1) % episodes.length];
+  fetch(`/api/prefetch/${next.episode_index}`);  // decode the next episode in the background
+}
+
+// -- frames --------------------------------------------------------------------
+
+// Each image loads one frame at a time; while one is loading, only the latest request is kept.
+const loaders = {};
+for (const cam of ["head", "wrist"]) {
+  const img = $(`img-${cam}`);
+  loaders[cam] = { busy: false, pending: false };
+  img.onload = img.onerror = () => {
+    loaders[cam].busy = false;
+    $("loading").textContent = "";
+    if (loaders[cam].pending) { loaders[cam].pending = false; loadImage(cam); }
+  };
+}
+function loadImage(cam) {
+  const url = `/api/frame/${ep().episode_index}/${cam}/${frame}`;
+  const img = $(`img-${cam}`);
+  if (img.dataset.src === url) return;
+  if (loaders[cam].busy) { loaders[cam].pending = true; return; }
+  loaders[cam].busy = true;
+  $("loading").textContent = "loading (first view of an episode decodes its video, a few seconds)";
+  img.dataset.src = url;
+  img.src = url;
+}
+
+function showFrame() {
+  frame = Math.max(0, Math.min(ep().length - 1, frame));
+  const phase = phaseAt(frame, bounds);
+  $("frame").textContent = frame;
+  $("phase").textContent = phase;
+  $("phase").style.background = COLORS[phase];
+  $("grip").textContent = ep().gripper[frame].toFixed(3);
+  loadImage("head"); loadImage("wrist");
+  drawTimeline();
+}
+
+function step(n) { frame += n; showFrame(); }
+function stop() { if (playing) { clearInterval(playing); playing = null; $("play").textContent = "play"; } }
+function togglePlay() {
+  if (playing) return stop();
+  $("play").textContent = "pause";
+  playing = setInterval(() => { if (frame >= ep().length - 1) stop(); else step(2); }, 40);  // ~real time at 50 fps
+}
+
+// -- timeline ------------------------------------------------------------------
+
+const canvas = $("timeline");
+const BAND = 16, PAD = 6;
+const xOf = (f, w) => (f / (ep().length - 1)) * w;
+const fOf = (x, w) => Math.round((x / w) * (ep().length - 1));
+
+function drawTimeline() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const g = canvas.getContext("2d");
+  g.scale(dpr, dpr);
+  g.clearRect(0, 0, w, h);
+  const n = ep().length;
+
+  for (let f = 0; f < n; f++) {  // phase band
+    g.fillStyle = COLORS[phaseAt(f, bounds)];
+    g.fillRect(xOf(f, w), 0, w / n + 1, BAND);
+  }
+  const top = BAND + PAD, bottom = h - 14;  // gripper trace: 1 (open) at the top, 0 (closed) at the bottom
+  g.strokeStyle = "#ccc"; g.beginPath(); g.moveTo(0, top); g.lineTo(w, top); g.moveTo(0, bottom); g.lineTo(w, bottom); g.stroke();
+  g.strokeStyle = "#333"; g.lineWidth = 1.5; g.beginPath();
+  ep().gripper.forEach((v, f) => { const y = bottom - v * (bottom - top); f ? g.lineTo(xOf(f, w), y) : g.moveTo(0, y); });
+  g.stroke();
+
+  g.font = "11px system-ui"; g.lineWidth = 2;
+  BOUNDS.forEach((k, i) => {  // boundary markers
+    if (bounds[k] === null) return;
+    const x = xOf(bounds[k], w);
+    g.strokeStyle = "#111"; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); g.setLineDash([]);
+    g.fillStyle = "#111"; g.fillText(`${i + 1}`, x + 3, h - 3);
+  });
+  const x = xOf(frame, w);  // cursor
+  g.strokeStyle = "#2563eb"; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  const x = e.offsetX, w = canvas.clientWidth;
+  dragging = BOUNDS.find((k) => bounds[k] !== null && Math.abs(xOf(bounds[k], w) - x) < 5) || "cursor";
+  onDrag(e);
+});
+window.addEventListener("mousemove", (e) => { if (dragging) onDrag(e); });
+window.addEventListener("mouseup", () => { dragging = null; });
+function onDrag(e) {
+  const r = canvas.getBoundingClientRect();
+  const f = Math.max(0, Math.min(ep().length - 1, fOf(e.clientX - r.left, r.width)));
+  if (dragging !== "cursor") setBound(dragging, f);
+  frame = f; showFrame();
+}
+
+// -- boundaries ----------------------------------------------------------------
+
+function renderBounds() {
+  $("bounds").innerHTML = "";
+  BOUNDS.forEach((k, i) => {
+    const tr = document.createElement("tr");
+    const color = COLORS[ep().phases[i + 1]];
+    tr.innerHTML = `<td><kbd>${i + 1}</kbd></td><td><span class="swatch" style="background:${color}"></span>${k}</td>
+      <td><input type="number" min="0" max="${ep().length}" value="${bounds[k] ?? ""}"></td>
+      <td class="help">${ep().auto[k] ?? "-"}</td>
+      <td><button class="b">set = current</button> <button class="b">go</button></td>
+      <td class="help">${meaning(k)}</td>`;
+    const [input] = tr.getElementsByTagName("input");
+    const [set, go] = tr.getElementsByTagName("button");
+    input.onchange = () => setBound(k, input.value === "" ? null : parseInt(input.value));
+    set.onclick = () => setBound(k, frame);
+    go.onclick = () => { if (bounds[k] !== null) { frame = bounds[k]; showFrame(); } };
+    $("bounds").appendChild(tr);
+  });
+  validate();
+}
+
+function setBound(k, f) {
+  bounds[k] = f; dirty = true;
+  const input = $("bounds").rows[BOUNDS.indexOf(k)].getElementsByTagName("input")[0];
+  input.value = f ?? "";
+  validate(); showFrame();
+}
+
+function validate() {
+  const p = problem(bounds, ep().length);
+  $("save").disabled = p !== null;
+  if (p) setMessage(p, "err"); else setMessage(dirty ? "unsaved changes" : "", "");
+}
+
+function setMessage(text, cls) { $("message").textContent = text; $("message").className = cls || ""; }
+
+async function save() {
+  if (problem(bounds, ep().length)) return;
+  const res = await fetch("/api/save", { method: "POST", body: JSON.stringify({ episode_index: ep().episode_index, boundaries: bounds }) });
+  const result = await res.json();
+  if (!res.ok) return setMessage(result.error, "err");
+  ep().boundaries = { ...bounds }; ep().reviewed = true; dirty = false;
+  if (result.summary) { $("finished").style.display = "block"; $("summary").textContent = result.summary; }
+  // next episode not yet reviewed, else stay
+  const order = episodes.map((_, i) => (cur + 1 + i) % episodes.length);
+  const next = order.find((i) => !episodes[i].reviewed);
+  if (next === undefined) { renderList(); setMessage("saved", "ok"); } else openEpisode(next);
+}
+
+$("reset").onclick = () => { bounds = { ...ep().auto }; dirty = true; renderBounds(); showFrame(); };
+$("save").onclick = save;
+$("play").onclick = togglePlay;
+document.querySelectorAll("[data-step]").forEach((b) => (b.onclick = () => step(parseInt(b.dataset.step))));
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") { if (e.key === "Enter") e.target.blur(); return; }
+  if (e.key === "ArrowLeft") step(e.shiftKey ? -10 : -1);
+  else if (e.key === "ArrowRight") step(e.shiftKey ? 10 : 1);
+  else if (e.key === " ") togglePlay();
+  else if (e.key >= "1" && e.key <= "5") setBound(BOUNDS[parseInt(e.key) - 1], frame);
+  else if (e.key === "Enter") save();
+  else return;
+  e.preventDefault();
+});
+window.addEventListener("resize", drawTimeline);
+window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
+
+fetch("/api/episodes").then((r) => r.json()).then((data) => {
+  episodes = data;
+  const first = episodes.findIndex((e) => !e.reviewed);
+  openEpisode(first === -1 ? 0 : first);
+});
+</script>
+</body>
+</html>
