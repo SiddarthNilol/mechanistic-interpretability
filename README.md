@@ -4,6 +4,8 @@ Which of PaliGemma's 144 attention heads (18 layers x 8 heads) carry action, pha
 and task information in a pi0.5 policy fine-tuned on ring hooking/unhooking, following
 [arXiv:2511.22697](https://arxiv.org/abs/2511.22697).
 
+Commands for the whole experiment: [COMMANDS.md](COMMANDS.md). Results: [RESULTS.md](RESULTS.md).
+
 Plan:
 
 1. **Dataset**: 20 random episodes per task (hook ring, unhook ring), every 5th
@@ -192,3 +194,16 @@ by reading rather than looking. Two checks:
 ```bash
 OUT=$SCRATCH/mechanistic-interpretability/pi05_base_images sbatch extraction/extract_job.sh --prompt ring --mean-state
 ```
+
+## The paper's head score
+
+`action_scores.py` scores heads as the paper does (its eq. 2-5): per task, each frame's action
+is predicted as the mean action of the k frames with the most similar head output, from the
+task's other episodes, and a head's score is the squared error (lower is better). Two targets:
+`position` (the action, joint position commands) and `motion` (how far the command moves the
+joints in the next 0.1 s, the closest we have to the paper's joint velocities).
+
+`action_report.py` then tests whether specialized heads exist; the five criteria are in its
+docstring, and were fixed before seeing results. The key ones split a task's episodes into two
+halves with no episode in common: does the top 20 repeat, and do heads picked on one half still
+beat the typical head on the other?
