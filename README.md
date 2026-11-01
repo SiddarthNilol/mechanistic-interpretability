@@ -6,12 +6,12 @@ and task information in a pi0.5 policy fine-tuned on ring hooking/unhooking, fol
 
 Plan:
 
-1. **Dataset** (this step): 20 random episodes per task (hook ring, unhook ring), every 5th
+1. **Dataset**: 20 random episodes per task (hook ring, unhook ring), every 5th
    frame, with task / phase / predicate labels per frame. `data_prep/`
 2. **Extraction**: every head's output and attention on every frame, from the base pi0.5
    (no fine-tuning, as the paper selects heads before fine-tuning). `extraction/`
-3. Scores per head: action, phase, predicates, task; shuffled-label control.
-4. Plots: 18x8 heatmaps, top-k overlap, per-phase maps, unhook vs hook, attention rollout.
+3. **Scores per head**: task, phase, predicates by k-NN; shuffled-label control. `analysis/`
+4. **Plots**: 18x8 heatmaps, top-20 overlap, per-phase maps. `analysis/`
 
 ## The data
 
@@ -151,3 +151,28 @@ recorded head outputs equal openpi's own. Outputs (row i = row i of `frames.csv`
 The base model has never seen this robot. The state is normalized like openpi does
 (1st/99th percentile of each dim over the dataset to -1/1) and written into the prompt;
 the cameras fill the slots the lair-train configs use (head, left wrist, right wrist).
+
+## Steps 3-4: scoring the heads and plotting them
+
+```bash
+H=$SCRATCH/mechanistic-interpretability/pi05_base
+python analysis/score_heads.py --heads $H    # scores.csv, recalls.csv (CPU, ~1 GB RAM, minutes)
+python analysis/plot_heads.py  --heads $H    # figures/
+```
+
+For every head and label, each frame is classified by majority vote of the 20 frames with
+the most similar head output (cosine similarity), never taken from the frame's own cycle.
+The score is balanced accuracy. Labels: `task`, the phases within each task
+(`phase_hook`, `phase_unhook`), `grasped`, `ring_on_pipe`.
+
+The **control** reruns the same vote with each episode's labels replaced by another
+episode's at the same progress through the episode. It keeps the label proportions and
+their timing, so a head that only tracks time since the start (or wins by chance) scores
+as well on the control. The maps show **score above control**.
+
+Note that the task name is in the prompt, so heads that read the prompt can tell the
+tasks apart without looking at the scene.
+
+`figures/`: `heatmaps.png` (label x stream, top 20 outlined), `phases_{hook,unhook}.png`
+(each phase's recall above control, per head), `overlap.png` (top-20 heads shared by
+two labels), `top_heads.csv`.
