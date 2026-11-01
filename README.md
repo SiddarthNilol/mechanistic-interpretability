@@ -8,7 +8,8 @@ Plan:
 
 1. **Dataset** (this step): 20 random episodes per task (hook ring, unhook ring), every 5th
    frame, with task / phase / predicate labels per frame. `data_prep/`
-2. Extraction: per-head activations at the first suffix token, `(num_frames, 144, head_dim)`.
+2. **Extraction**: every head's output and attention on every frame, from the base pi0.5
+   (no fine-tuning, as the paper selects heads before fine-tuning). `extraction/`
 3. Scores per head: action, phase, predicates, task; shuffled-label control.
 4. Plots: 18x8 heatmaps, top-k overlap, per-phase maps, unhook vs hook, attention rollout.
 
@@ -121,3 +122,32 @@ dataset. The extraction step runs the model on exactly these rows. Adjacent fram
 correlated and the two halves of a cycle share a scene, so cross-validate grouped by `cycle`,
 not by frame. Hook episodes are longer (~1.5x the frames), so balance or weight the tasks when
 scoring task identity.
+
+## Step 2: extracting the heads
+
+pi0.5 is two transformers with 18 layers of 8 heads each that share one attention per
+layer: PaliGemma (Gemma 2B) processes the prefix (three camera images of 256 tokens each,
+then the prompt `Task: <task>, State: <25 numbers>;\nAction: `), and the action expert
+(Gemma 300M) processes the suffix (50 noisy action tokens). The prefix attends only to
+itself; the action tokens attend to the prefix and to each other.
+
+`extract_heads.py` runs the released `pi05_base` on every frame of `frames.csv` (one
+prefix pass and the first denoising step of the suffix, with the same noise for every
+frame) and records, for every layer and head, the attention weights over the keys and the
+head output `softmax(q kᵀ / √d) v` (the paper's eq. 1, 256 numbers) at two tokens:
+
+- `vlm`: PaliGemma's heads at the last prompt token, which sees images, task and state
+- `action`: the action expert's heads at the first action token (the paper's choice)
+
+```bash
+sbatch extraction/extract_job.sh     # from the repository root; ~5 GB to $SCRATCH
+```
+
+The job first runs `check_capture.py`, which checks on a tiny random pi0.5 that the
+recorded head outputs equal openpi's own. Outputs (row i = row i of `frames.csv`):
+`heads_{vlm,action}.npy` `(frames, 18, 8, 256)`, `attn_{vlm,action}.npy`
+`(frames, 18, 8, keys)`, `tokens.npy`, and `info.json` with the key layout.
+
+The base model has never seen this robot. The state is normalized like openpi does
+(1st/99th percentile of each dim over the dataset to -1/1) and written into the prompt;
+the cameras fill the slots the lair-train configs use (head, left wrist, right wrist).
