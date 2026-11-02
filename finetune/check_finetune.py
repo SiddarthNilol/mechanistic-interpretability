@@ -211,6 +211,10 @@ def check_actions():
 
 
 if __name__ == "__main__":
+    # Full float32 matrix products. On GPUs, JAX by default multiplies float32 matrices with TF32
+    # (~3 significant digits), which alone makes the trained and served models differ. Only this
+    # check needs it: this setting doesn't reach finetune_heads.py, which is a separate process.
+    jax.config.update("jax_default_matmul_precision", "highest")
     check_actions()
     check_full_size_counts()
     check_server_loading(*check_training_is_exact(tiny_config()))
