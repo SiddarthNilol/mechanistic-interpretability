@@ -119,10 +119,40 @@ H=$SCRATCH/mechanistic-interpretability/pi05_base_denoised
 python analysis/select_heads.py --dataset $DATA --heads $H | tee $H/selection_report.txt
 ```
 
-## 6. Results to the Mac
+## 6. Fine-tuning with the selected heads (`finetune/`, GPU job)
+
+The job first runs `check_finetune.py`, then trains. Run the selected heads and the random control,
+so the result can be compared:
+
+```bash
+H=$SCRATCH/mechanistic-interpretability/pi05_base_denoised
+RUNS=$SCRATCH/mechanistic-interpretability/finetune
+
+OUT=$RUNS/unhook_selected sbatch finetune/finetune_job.sh --task "unhook ring" --selection $H/selected_heads.json
+OUT=$RUNS/unhook_random   sbatch finetune/finetune_job.sh --task "unhook ring" --heads random
+```
+
+Each run saves 3 checkpoints of about 12 GB each. A new run refuses a directory that already has
+one. `served_check.json` compares the held-out loss of the trained model and of the last checkpoint
+loaded as the server loads it; the two should be close.
+
+To serve a checkpoint on the robot's inference machine, from the `policy-inference-spec` root in the
+lair-openpi environment:
+
+```bash
+PYTHONPATH=. $SCRATCH/lair-openpi/.venv/bin/python -m server.server_openpi \
+    --checkpoint-path $RUNS/unhook_selected/3000 --task "unhook ring" --rtc-train --host 0.0.0.0 --port 18090
+```
+
+`finetune_job.sh` always passes `--rtc-train`, so serve its checkpoints with `--rtc-train` as above.
+Delays are 0 to 14 control steps by default, the same as the server's. Compare held-out losses only
+between runs that both use RTC or both don't.
+
+## 7. Results to the Mac
 
 Copy `scores.csv`, `attention_groups.csv`, `action_report.txt`, `action_report.csv`, `stable_heads.csv`
 and `figures/` of each run into
-`pi05_base/` and `pi05_base_images/` in the local repository, and `selection_report.txt`,
-`selected_heads.json` and `selection_scores.csv` into `pi05_base_denoised/` (the large `.npy` files
+`pi05_base/` and `pi05_base_images/` in the local repository, `selection_report.txt`,
+`selected_heads.json` and `selection_scores.csv` into `pi05_base_denoised/`, and each fine-tuning run's
+`run.json` and `metrics.csv` into `finetune_runs/<run>/` (the large `.npy` files and the checkpoints
 stay on HPC). The conclusions are in `RESULTS.md`.

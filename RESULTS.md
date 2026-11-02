@@ -149,6 +149,63 @@ first action token spreads far more than its last prompt token, and ours does no
 not strictly comparable, since we predict different actions on a different robot. The paper also
 says that its best and worst heads are not clearly separated in task classification.
 
+## The paper's selection, following its released code
+
+**What changed from the section above.** `select_heads.py` follows the paper's code, and we checked
+that it picks the same heads as that code on synthetic data. The first action token now receives
+the model's own predicted actions instead of noise. The target is the active arm's 7 joint
+velocities plus its gripper. We use all frames, not the paper's keyframes.
+
+**Selected heads (action stream).**
+
+- Hook ring (k=40): L0H2 L0H6 L0H3 L6H6 L2H5 L2H7 L1H3 L6H4 L0H4 L3H1 L4H5 L3H3 L3H0 L8H4 L14H4
+  L14H2 L0H1 L0H7 L12H5 L6H7
+- Unhook ring (k=20): L0H2 L0H6 L0H3 L2H7 L0H7 L2H5 L6H6 L0H4 L1H3 L6H4 L0H1 L3H0 L3H1 L1H1 L3H3
+  L4H5 L0H5 L1H5 L2H6 L1H0
+
+**Action error (lower is better).**
+
+| prediction | hook ring | unhook ring |
+|---|---|---|
+| Average action of the task's other episodes (no head) | 0.137 | 0.133 |
+| Median head | 0.130 | 0.124 |
+| The 20 selected heads, joined | 0.113 | 0.110 |
+| Time only: other episodes' frames at the same point in the episode (no head) | 0.100 | 0.086 |
+| Best head (L0H2) | 0.095 | 0.089 |
+
+The two no-head rows come from a one-off check that is not in the repository. The time-only row
+uses a plain average, and it knows the episode's length, which a head does not.
+
+| measure | paper | ours |
+|---|---|---|
+| Score spread (std / mean), first action token | 0.47 | 0.058 hook ring, 0.078 unhook ring |
+| Score spread (std / mean), last prompt token | 0.05 | 0.32 hook ring, 0.27 unhook ring |
+
+### Conclusions from the selection
+
+13. **Feeding predicted actions does not give the paper's spread.** The first action token stays
+    near 0.06-0.08 against the paper's 0.47, and the paper's ordering is reversed: our last prompt
+    token spreads more. Much of that spread comes from its layer 0 heads, which are the worst;
+    without layer 0 it is 0.12-0.14. Our robot, target and frames still differ from the paper's.
+14. **The selected heads predict actions worse than timing alone.** Joined, they score 0.113 and
+    0.110 against 0.100 and 0.086 for time only. Only two single heads beat time only in hook ring
+    (L0H2, L0H6), and none do in unhook ring. Joining the 20 is also worse than the best head alone.
+15. **Most heads add little.** The median head is only 5-7% better than always predicting the
+    average action.
+16. **The selection barely separates the tasks.** 15 of 20 heads are shared, against about 3 by
+    chance and about 8.5 if only each head's layer mattered. So individual heads repeat across
+    tasks, but they look general rather than task-specific.
+17. **The selection favours early layers.** 12 (hook ring) and 17 (unhook ring) of the 20 are in
+    layers 0-3, and layers explain 46% and 79% of the differences between heads.
+18. **The input changes which action-stream heads win.** Only 4-5 of the 20 match the earlier
+    motion top 20 (none match position). The target changed too, but the last prompt token, which
+    the input cannot affect, keeps 16-18 of 20 for motion. So most of the change comes from the
+    input.
+19. **k matters little.** The unhook-ring choice of k=20 wins by under 0.5%, and the top 20 stays
+    18-20 of 20 the same across k in the action stream (16-20 in the VLM).
+
+We have not tested these selected heads on new episodes, so we don't yet know that they repeat.
+
 ## Limits
 
 - This is the base model, which has never seen our robot; a fine-tuned model may organize

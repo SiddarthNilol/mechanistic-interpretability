@@ -200,13 +200,15 @@ def state_stats(dataset: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return np.quantile(states, 0.01, axis=0), np.quantile(states, 0.99, axis=0), states.mean(axis=0)
 
 
-def normalize_state(state: np.ndarray, q01: np.ndarray, q99: np.ndarray) -> np.ndarray:
-    """openpi's quantile normalization, clipped to [-1, 1]: the prompt bins [-1, 1] into
-    256 values, and values outside would become bin -1 or 256."""
-    return np.clip((state - q01) / (q99 - q01 + 1e-6) * 2.0 - 1.0, -1.0, 1.0)
+def normalize_state(state: np.ndarray, q01: np.ndarray, q99: np.ndarray, *, clip: bool = True) -> np.ndarray:
+    """openpi's quantile normalization. By default clipped to [-1, 1]: the prompt bins [-1, 1]
+    into 256 values, and values outside would become bin -1 or 256. openpi's trainer and the
+    inference server don't clip, so fine-tuning uses clip=False."""
+    x = (state - q01) / (q99 - q01 + 1e-6) * 2.0 - 1.0
+    return np.clip(x, -1.0, 1.0) if clip else x
 
 
-def episode_inputs(dataset, episodes, ep, frame_indices, task, q01, q99, tokenizer, fixed_state=None) -> dict:
+def episode_inputs(dataset, episodes, ep, frame_indices, task, q01, q99, tokenizer, fixed_state=None, clip_state=True) -> dict:
     """Model inputs for some frames of one episode: images per camera slot (n, 224, 224, 3)
     uint8, the normalized state (n, 25), and the prompt tokens and mask (n, 200). With
     `fixed_state` (25,), every frame gets that state instead of its own."""
@@ -218,7 +220,7 @@ def episode_inputs(dataset, episodes, ep, frame_indices, task, q01, q99, tokeniz
     state = np.stack(read_episode_frames(dataset, episodes, ep)[STATE].to_numpy())[frame_indices]
     if fixed_state is not None:
         state = np.broadcast_to(fixed_state, state.shape)
-    state = normalize_state(state.astype(np.float64), q01, q99)
+    state = normalize_state(state.astype(np.float64), q01, q99, clip=clip_state)
     tokens, token_mask = zip(*(tokenizer.tokenize(task, s) for s in state))
     return {"images": images, "state": state, "tokens": np.stack(tokens), "token_mask": np.stack(token_mask)}
 

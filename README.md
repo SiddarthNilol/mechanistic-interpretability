@@ -215,3 +215,13 @@ These scripts follow the paper's text, and differ from its released code in how 
 are fed, which actions are used, and how k is chosen. `extract_heads.py --denoised` and
 `select_heads.py` follow the code instead, except that they use all frames rather than keyframes;
 the docstring of `select_heads.py` lists what we had to adapt to our robot.
+
+## Fine-tuning
+
+`finetune/finetune_heads.py` fine-tunes pi0.5 on one task as the paper's code does: it trains the
+LoRA of the chosen heads (Q and O only, in PaliGemma), the FFN LoRA of every PaliGemma layer, the time
+MLP and the action projections, and freezes the rest. `--heads random` and `--heads all` are the
+controls. The docstring lists what we had to adapt. Checkpoints have their LoRA merged in, so
+`policy-inference-spec/server/server_openpi.py` can serve them. `finetune/check_finetune.py` tests
+that only the intended parameters change and that the served checkpoint gives the trained model's
+actions. Commands: [COMMANDS.md](COMMANDS.md), step 6.
