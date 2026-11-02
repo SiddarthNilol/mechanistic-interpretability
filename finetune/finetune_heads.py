@@ -360,19 +360,25 @@ def merge_lora(params: dict) -> dict:
         most weights       w + A B                       per head where they have heads
         attn_vec_einsum    w[n] + A[n] (sum over m of B[m])   see the module docstring
     """
-    flat = {k: np.asarray(v).astype(np.float32) for k, v in traverse_util.flatten_dict(params, sep="/").items()}
-    merged = {k: v for k, v in flat.items() if "lora" not in k}
-    for path, a in flat.items():
-        if path.endswith("/lora_a"):  # attention: .../q_einsum/lora_a beside .../q_einsum/w
-            weight = path.removesuffix("lora_a") + "w"
-        elif path.endswith("_lora_a"):  # FFN: .../linear_lora_a beside .../linear
-            weight = path.removesuffix("_lora_a")
-        else:
+    flat = traverse_util.flatten_dict(params, sep="/")
+
+    def as_float32(path):
+        return np.asarray(flat[path]).astype(np.float32)
+
+    # One weight at a time, keeping no float32 copy of the old weights: the model has 3.4 billion
+    # parameters, so holding both costs about 10 GB more memory.
+    merged = {}
+    for path in flat:
+        if "lora" in path:
             continue
-        b = flat[path.removesuffix("a") + "b"]
-        if "/attn_vec_einsum" in path:
-            b = b.sum(axis=1, keepdims=True)  # (layers, heads, rank, width): over the heads
-        merged[weight] = merged[weight] + a @ b
+        # attention: .../q_einsum/lora_a beside .../q_einsum/w; FFN: .../linear_lora_a beside .../linear
+        lora_a = path.removesuffix("w") + "lora_a" if path.endswith("/w") else path + "_lora_a"
+        merged[path] = as_float32(path)
+        if lora_a in flat:
+            b = as_float32(lora_a.removesuffix("a") + "b")
+            if "/attn_vec_einsum" in path:
+                b = b.sum(axis=1, keepdims=True)  # (layers, heads, rank, width): over the heads
+            merged[path] += as_float32(lora_a) @ b
     return traverse_util.unflatten_dict(merged, sep="/")
 
 

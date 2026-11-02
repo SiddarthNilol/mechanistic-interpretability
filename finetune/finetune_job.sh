@@ -4,7 +4,7 @@
 #SBATCH --partition=h100_tandon
 #SBATCH --gres=gpu:h100:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=120G
 #SBATCH --time=08:00:00
 #SBATCH --output=%x_%j.log
 # Fine-tuning on one GPU. Submit from the repository root, and give the run's directory as OUT:
