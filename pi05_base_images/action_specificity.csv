@@ -1,0 +1,9 @@
+stream,target,task,other_task,same_task,task_preference,other_phase,same_phase,phase_preference,single_phase_heads,layer_share,same_task_within_layer,beat_control
+action,motion,hook ring,0.087,0.277,0.043,0.104,0.121,0.037,0,0.643,0.177,144
+action,motion,unhook ring,0.102,0.006,0.043,-0.024,0.165,0.221,3,0.534,0.153,144
+action,position,hook ring,0.482,0.609,0.144,0.427,0.508,0.222,0,0.604,0.447,144
+action,position,unhook ring,0.458,0.477,0.144,0.31,0.377,0.166,0,0.469,0.426,144
+vlm,motion,hook ring,0.047,0.217,0.162,0.091,0.105,0.019,0,0.581,0.275,140
+vlm,motion,unhook ring,0.095,0.134,0.162,0.006,0.17,0.173,6,0.421,0.293,140
+vlm,position,hook ring,0.603,0.634,0.139,0.488,0.546,0.187,0,0.468,0.53,142
+vlm,position,unhook ring,0.631,0.659,0.139,0.519,0.558,0.143,0,0.521,0.553,140

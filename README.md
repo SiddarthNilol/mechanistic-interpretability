@@ -207,3 +207,6 @@ joints in the next 0.1 s, the closest we have to the paper's joint velocities).
 docstring, and were fixed before seeing results. The key ones split a task's episodes into two
 halves with no episode in common: does the top 20 repeat, and do heads picked on one half still
 beat the typical head on the other?
+
+`action_specificity.py` looks closer at whether heads prefer a task or phase, and at how much of
+a head's rank comes from its layer. It was added after seeing the results of `action_report.py`.

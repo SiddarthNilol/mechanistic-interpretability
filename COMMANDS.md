@@ -93,6 +93,7 @@ DATA=/scratch/sk12590/ultrarobot-data/unhook-hook-data
 for H in $SCRATCH/mechanistic-interpretability/pi05_base $SCRATCH/mechanistic-interpretability/pi05_base_images; do
     python analysis/action_scores.py --dataset $DATA --heads $H   # action_scores.csv, action_splits.csv
     python analysis/action_report.py --heads $H | tee $H/action_report.txt   # the tests, figures/action_*.png
+    python analysis/action_specificity.py --heads $H   # action_specificity.csv: do heads prefer a task or phase?
 done
 ```
 
