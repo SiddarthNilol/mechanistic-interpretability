@@ -210,3 +210,8 @@ beat the typical head on the other?
 
 `action_specificity.py` looks closer at whether heads prefer a task or phase, and at how much of
 a head's rank comes from its layer. It was added after seeing the results of `action_report.py`.
+
+These scripts follow the paper's text, and differ from its released code in how the action tokens
+are fed, which actions are used, and how k is chosen. `extract_heads.py --denoised` and
+`select_heads.py` follow the code instead, except that they use all frames rather than keyframes;
+the docstring of `select_heads.py` lists what we had to adapt to our robot.

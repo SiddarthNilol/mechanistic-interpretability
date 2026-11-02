@@ -97,9 +97,32 @@ for H in $SCRATCH/mechanistic-interpretability/pi05_base $SCRATCH/mechanistic-in
 done
 ```
 
-## 5. Results to the Mac
+## 5. The paper's head selection, as in its released code
+
+First a new extraction on the GPU, feeding the action tokens as the paper's code does. It denoises
+every frame, so it takes longer than step 2, hence the longer time limit:
+
+```bash
+OUT=$SCRATCH/mechanistic-interpretability/pi05_base_denoised \
+    sbatch --time=04:00:00 extraction/extract_job.sh --denoised
+```
+
+Then the selection, on the CPU:
+
+```bash
+srun --account=torch_pr_564_tandon_advanced --cpus-per-task=8 --mem=32G --time=2:00:00 --pty bash
+source $SCRATCH/lair-openpi/.venv/bin/activate
+cd $SCRATCH/mechanistic-interpretability
+DATA=/scratch/sk12590/ultrarobot-data/unhook-hook-data
+H=$SCRATCH/mechanistic-interpretability/pi05_base_denoised
+
+python analysis/select_heads.py --dataset $DATA --heads $H | tee $H/selection_report.txt
+```
+
+## 6. Results to the Mac
 
 Copy `scores.csv`, `attention_groups.csv`, `action_report.txt`, `action_report.csv`, `stable_heads.csv`
 and `figures/` of each run into
-`pi05_base/` and `pi05_base_images/` in the local repository (the large `.npy` files stay on
-HPC). The conclusions are in `RESULTS.md`.
+`pi05_base/` and `pi05_base_images/` in the local repository, and `selection_report.txt`,
+`selected_heads.json` and `selection_scores.csv` into `pi05_base_denoised/` (the large `.npy` files
+stay on HPC). The conclusions are in `RESULTS.md`.

@@ -75,7 +75,12 @@ how much a head gets right just from how far into the episode a frame is. We rep
 
 ## The paper's score: predicting the action
 
-**How we scored a head.** As in the paper, per task: for each frame, take the k frames with the
+**Note.** This section follows the paper's text. Its released code differs: it feeds the action
+tokens the model's own predicted actions, and differs in frames (it uses keyframes), actions and
+how k is chosen. So
+these numbers are not a like-for-like comparison with the paper. See `analysis/select_heads.py`.
+
+**How we scored a head.** Following the paper's text, per task: for each frame, take the k frames with the
 most similar head output from the task's other episodes, and predict the action as the mean of
 their actions. The **action error** of a head is the squared error of that prediction, so lower
 is better. k is 10, 20, 30 or 40, chosen by the paper's rule. The **top 20** are the 20 heads with

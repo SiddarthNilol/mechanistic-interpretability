@@ -22,6 +22,11 @@ h = softmax(q k^T / sqrt(d)) v (eq. 1 of the paper), a 256-dim vector:
 The noise is the same for every frame, so the suffix pass differs between frames only
 through what it reads from the prefix.
 
+--denoised does what the paper's released code does instead: for each frame, denoise from
+fresh noise (10 steps, nothing recorded) to the model's predicted actions, then run the suffix
+pass once more on those actions at flow time 0, and record there. The first action token then
+carries the model's own predicted action.
+
 Both the task and the state are text in the prompt, so heads can tell tasks and phases
 apart by reading it. Two options take that away, leaving only the images to differ:
 
@@ -81,6 +86,7 @@ CAMERAS = {
 }
 STATE = "observation.state"
 FLOW_TIME = 1.0  # 1 = pure noise, the first of the denoising steps
+DENOISED_FLOW_TIME = 0.0  # 0 = finished, the actions are clean
 
 
 # -- recording the heads ---------------------------------------------------------
@@ -127,13 +133,14 @@ def record_heads(query: jax.Array, sink: list):
 
 
 def make_forward(model, sink: list):
-    """A function (observation, noise) -> None that runs the prefix pass and one suffix
-    pass, as pi0.5's sample_actions does for its first denoising step, and appends one
+    """A function (observation, actions, flow_time) -> None that runs the prefix pass and one
+    suffix pass, as pi0.5's sample_actions does for one denoising step, and appends one
     (heads, weights) entry per layer to `sink`: the 18 PaliGemma layers at the last
-    prompt token, then the 18 action-expert layers at the first action token."""
+    prompt token, then the 18 action-expert layers at the first action token. `actions` are
+    the suffix's input: noise at flow time 1, clean actions at flow time 0."""
     graphdef, state = nnx.split(model)
 
-    def forward(state, obs, noise):
+    def forward(state, obs, actions, flow_time):
         m = nnx.merge(graphdef, state)
         obs = _model.preprocess_observation(None, obs, train=False)
         b = obs.state.shape[0]
@@ -149,7 +156,7 @@ def make_forward(model, sink: list):
             )
 
         # Suffix: the 50 action tokens attend to the whole prefix and to each other.
-        suffix, suffix_mask, suffix_ar, adarms_cond = m.embed_suffix(obs, noise, jnp.full(b, FLOW_TIME))
+        suffix, suffix_mask, suffix_ar, adarms_cond = m.embed_suffix(obs, actions, jnp.full(b, flow_time))
         mask = jnp.concatenate(
             [jnp.repeat(prefix_mask[:, None], suffix.shape[1], axis=1), make_attn_mask(suffix_mask, suffix_ar)],
             axis=-1,
@@ -162,6 +169,17 @@ def make_forward(model, sink: list):
             )
 
     jitted = jax.jit(forward)
+    return lambda obs, actions, flow_time=FLOW_TIME: jitted(state, obs, actions, flow_time)
+
+
+def make_denoise(model):
+    """A function (observation, noise) -> the model's predicted actions (10 denoising steps)."""
+    graphdef, state = nnx.split(model)
+
+    def denoise(state, obs, noise):
+        return nnx.merge(graphdef, state).sample_actions(jax.random.key(0), obs, noise=noise)
+
+    jitted = jax.jit(denoise)
     return lambda obs, noise: jitted(state, obs, noise)
 
 
@@ -228,7 +246,8 @@ def main():
     parser.add_argument("--out", type=Path, required=True, help="output directory (gets ~5 GB)")
     parser.add_argument("--params", default=BASE_PARAMS, help="model weights (default: the released pi05_base)")
     parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--seed", type=int, default=0, help="seed of the action noise shared by all frames")
+    parser.add_argument("--seed", type=int, default=0, help="seed of the action noise")
+    parser.add_argument("--denoised", action="store_true", help="feed the action tokens as the paper's code does")
     parser.add_argument("--prompt", help="task text for every frame (default: each frame's task)")
     parser.add_argument("--mean-state", action="store_true", help="give every frame the dataset's mean state")
     args = parser.parse_args()
@@ -241,9 +260,12 @@ def main():
     model = config.load(params)
     tokenizer = PaligemmaTokenizer(config.max_token_len)
     q01, q99, mean_state = state_stats(args.dataset)
-    noise = jax.random.normal(jax.random.key(args.seed), (1, config.action_horizon, config.action_dim))
+    noise_key = jax.random.key(args.seed)
+    noise = jax.random.normal(noise_key, (1, config.action_horizon, config.action_dim))
     sink = []
     forward = make_forward(model, sink)
+    denoise = make_denoise(model)
+    n_batches = 0
 
     gemma_config = gemma.get_config(config.paligemma_variant)  # the action expert has the same layout
     n, layers, heads, dim = len(frames), gemma_config.depth, gemma_config.num_heads, gemma_config.head_dim
@@ -272,7 +294,15 @@ def main():
             rows = np.arange(start, min(start + args.batch_size, len(ep_frames)))
             padded = np.pad(rows, (0, args.batch_size - len(rows)), mode="edge")  # one batch shape, one compile
             sink.clear()
-            forward(observation(inputs, padded, config.action_dim), jnp.repeat(noise, args.batch_size, axis=0))
+            obs = observation(inputs, padded, config.action_dim)
+            if args.denoised:
+                n_batches += 1
+                fresh = jax.random.normal(
+                    jax.random.fold_in(noise_key, n_batches), (args.batch_size, config.action_horizon, config.action_dim)
+                )
+                forward(obs, denoise(obs, fresh), DENOISED_FLOW_TIME)
+            else:
+                forward(obs, jnp.repeat(noise, args.batch_size, axis=0), FLOW_TIME)
             jax.effects_barrier()  # wait until every callback has run
             if len(sink) != 2 * layers:
                 raise RuntimeError(f"recorded {len(sink)} layers, expected {2 * layers}")
@@ -287,7 +317,8 @@ def main():
     shutil.copy(args.frames, args.out / "frames.csv")
     info = {
         "params": args.params,
-        "flow_time": FLOW_TIME,
+        "action_input": "denoised actions" if args.denoised else "noise",
+        "flow_time": DENOISED_FLOW_TIME if args.denoised else FLOW_TIME,
         "noise_seed": args.seed,
         "prompt": args.prompt or "each frame's task",
         "state": "dataset mean" if args.mean_state else "each frame's",
