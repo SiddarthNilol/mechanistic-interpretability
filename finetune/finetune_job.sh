@@ -19,6 +19,8 @@ source "$SCRATCH/lair-openpi/.venv/bin/activate"
 export OPENPI_DATA_HOME=${OPENPI_DATA_HOME:-$SCRATCH/.cache/openpi}  # where pi05_base is cached
 export PYTHONUNBUFFERED=1
 export XLA_PYTHON_CLIENT_MEM_FRACTION=${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.9}
+export WANDB_DIR=${WANDB_DIR:-$SCRATCH/.cache/wandb}  # home quota is small
+mkdir -p "$WANDB_DIR"
 DATA=${DATA:-/scratch/sk12590/ultrarobot-data/unhook-hook-data}
 
 nvidia-smi -L

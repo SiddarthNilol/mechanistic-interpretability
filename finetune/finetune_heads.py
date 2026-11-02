@@ -64,11 +64,16 @@ The script trains on the task's 20 episodes of episodes.csv, all frames. All of 
 task, always the same ones with the same noise, so it can be compared between runs. Step 0 is the
 model before training.
 
+Logs to wandb like lair-train: loss, grad_norm, param_norm and learning_rate every 100 steps, eval/loss
+at step 0 and at each checkpoint, and camera_views at step 0. The run is named after --out, and
+--no-wandb turns it off.
+
 Writes to --out:
 
     run.json                         settings, heads, training and held-out episodes
     metrics.csv                      step, loss, grad_norm, learning_rate, heldout_loss
     served_check.json                held-out loss of the trained model and of the served checkpoint
+    wandb_id.txt                     the wandb run
     <step>/params/                   merged weights, laid out like a lair-train checkpoint
     <step>/assets/<task>/norm_stats.json
 """
@@ -92,6 +97,7 @@ import numpy as np
 import optax
 import orbax.checkpoint as ocp
 import pandas as pd
+import wandb
 from openpi.models import model as _model
 from openpi.models import pi0_config
 from openpi.models.tokenizer import PaligemmaTokenizer
@@ -315,7 +321,16 @@ def train_step(graphdef, tx, mask, params, opt_state, rng, obs, actions):
     trainable = params.filter(trainable_filter()).to_pure_dict()
     updates, opt_state = tx.update(grads, opt_state, trainable)
     nnx.update(model, nnx.State(optax.apply_updates(trainable, updates)))
-    return nnx.state(model), opt_state, {"loss": loss, "grad_norm": optax.global_norm(grads)}
+    kernels = nnx.state(  # the weights openpi's trainer reports as param_norm
+        model,
+        nnx.All(
+            nnx.Param,
+            nnx.Not(nnx_utils.PathRegex(".*/(bias|scale|pos_embedding|input_embedding)")),
+            lambda _, x: x.value.ndim > 1,
+        ),
+    )
+    info = {"loss": loss, "grad_norm": optax.global_norm(grads), "param_norm": optax.global_norm(kernels)}
+    return nnx.state(model), opt_state, info
 
 
 def make_eval(graphdef):
@@ -377,6 +392,11 @@ def load_as_served(out: Path, step: int, **rtc):
     return nnx.split(make_served_config(**rtc).load(params))
 
 
+def camera_views(data: dict, n: int = 5) -> list:
+    """The first frames as the model gets them, cameras side by side, to check them by eye."""
+    return [wandb.Image(np.concatenate([images[i] for images in data["images"].values()], axis=1)) for i in range(n)]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", type=Path, required=True, help="LeRobot v3.0 dataset root")
@@ -395,11 +415,22 @@ def main():
     parser.add_argument("--rtc-min-delay", type=int, default=0, help="smallest simulated delay, in control steps")
     parser.add_argument("--rtc-max-delay", type=int, default=15, help="delays stay below this (the server's default)")
     parser.add_argument("--seed", type=int, default=0, help="LoRA start, batches, noise and --heads random")
+    parser.add_argument("--wandb-project", default="mechanistic-interpretability")
+    parser.add_argument("--no-wandb", action="store_true", help="don't log to wandb")
     args = parser.parse_args()
 
     if (args.out / "run.json").exists():
         raise FileExistsError(f"{args.out} already has a run; choose another --out")
     args.out.mkdir(parents=True, exist_ok=True)
+    # Before the frames load, so that a missing wandb login fails at once.
+    wandb.init(
+        project=args.wandb_project,
+        name=args.out.name,
+        mode="disabled" if args.no_wandb else None,
+        config={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+    )
+    if not args.no_wandb:
+        (args.out / "wandb_id.txt").write_text(wandb.run.id)
 
     table = pd.read_csv(args.episodes)
     training = table.loc[table["task"] == args.task, "episode_index"].tolist()
@@ -433,20 +464,18 @@ def main():
     step_fn = jax.jit(functools.partial(train_step, graphdef, tx, mask))
     eval_fn = make_eval(graphdef)
 
+    resolved = {
+        "selected_heads": heads,
+        "training_episodes": training,
+        "heldout_episode_list": heldout,
+        "trainable": counts,
+        "n_training_frames": len(train_data["state"]),
+        "n_heldout_frames": len(eval_data["state"]),
+        "horizon": HORIZON,
+    }
+    wandb.config.update(resolved)
     (args.out / "run.json").write_text(
-        json.dumps(
-            {
-                **{k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
-                "selected_heads": heads,
-                "training_episodes": training,
-                "heldout_episodes": heldout,
-                "trainable": counts,
-                "n_training_frames": len(train_data["state"]),
-                "n_heldout_frames": len(eval_data["state"]),
-                "horizon": HORIZON,
-            },
-            indent=2,
-        )
+        json.dumps({**{k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}, **resolved}, indent=2)
     )
 
     key = jax.random.key(args.seed + 1)
@@ -462,6 +491,7 @@ def main():
         writer.writerow([0, "", "", "", f"{before:.5f}"])
         f.flush()
         print(f"step 0: held-out loss {before:.4f}", flush=True)
+        wandb.log({"eval/loss": before, "camera_views": camera_views(train_data)}, step=0)
 
         start, recent = time.time(), []
         for step in range(1, args.steps + 1):
@@ -482,6 +512,10 @@ def main():
                 f.flush()
                 text = f"step {step}: loss {mean['loss']:.4f}, grad norm {mean['grad_norm']:.3f}, {time.time() - start:.0f} s"
                 print(text if heldout_value is None else f"{text}, held-out loss {heldout_value:.4f}", flush=True)
+                wandb.log(
+                    {**mean, "learning_rate": lr, **({} if heldout_value is None else {"eval/loss": heldout_value})},
+                    step=step,
+                )
                 if is_save:
                     save_checkpoint(args.out, step, params, stats, asset)
 
@@ -490,6 +524,8 @@ def main():
     served = heldout_loss(make_eval(served_graphdef), served_params, eval_data, args.batch_size, config.action_dim)
     (args.out / "served_check.json").write_text(json.dumps({"trained": trained, "served": served}, indent=2))
     print(f"held-out loss: trained model {trained:.4f}, as served {served:.4f}", flush=True)
+    wandb.summary.update({"served_check/trained": trained, "served_check/served": served})
+    wandb.finish()
     print(f"done: {args.out}", flush=True)
 
 

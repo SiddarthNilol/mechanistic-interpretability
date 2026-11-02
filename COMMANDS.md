@@ -132,7 +132,9 @@ OUT=$RUNS/unhook_selected sbatch finetune/finetune_job.sh --task "unhook ring" -
 OUT=$RUNS/unhook_random   sbatch finetune/finetune_job.sh --task "unhook ring" --heads random
 ```
 
-Each run saves 3 checkpoints of about 12 GB each. A new run refuses a directory that already has
+Runs log to the wandb project `mechanistic-interpretability`, each named after its directory (run
+`wandb login` once on HPC if you haven't; `--no-wandb` turns it off). Each run saves 3 checkpoints of
+about 12 GB each. A new run refuses a directory that already has
 one. `served_check.json` compares the held-out loss of the trained model and of the last checkpoint
 loaded as the server loads it; the two should be close.
 
