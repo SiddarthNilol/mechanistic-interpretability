@@ -4,15 +4,15 @@ done: vlm hook ring
 done: vlm unhook ring
 
 selection (the paper's uses the action stream; its score spread: 0.47 action, 0.05 vlm):
-  action hook ring   frames=3680 k=40 spread=0.058
-    L0H2 L0H6 L0H3 L6H6 L2H5 L2H7 L1H3 L6H4 L0H4 L3H1 L4H5 L3H3 L3H0 L8H4 L14H4 L14H2 L0H1 L0H7 L12H5 L6H7
-  action unhook ring frames=2512 k=20 spread=0.078
-    L0H2 L0H6 L0H3 L2H7 L0H7 L2H5 L6H6 L0H4 L1H3 L6H4 L0H1 L3H0 L3H1 L1H1 L3H3 L4H5 L0H5 L1H5 L2H6 L1H0
-  vlm    hook ring   frames=3680 k=40 spread=0.320
-    L3H3 L3H1 L3H0 L2H5 L2H7 L4H1 L2H0 L1H1 L1H6 L7H4 L6H0 L1H5 L3H6 L5H2 L4H3 L0H4 L10H4 L2H3 L4H0 L5H3
-  vlm    unhook ring frames=2512 k=40 spread=0.271
-    L2H5 L6H0 L2H7 L1H1 L5H2 L3H0 L4H1 L2H0 L0H4 L5H3 L3H1 L1H6 L3H3 L7H4 L1H3 L10H0 L11H0 L1H0 L4H7 L1H5
+  action hook ring   frames=3680 k=40 spread=0.053
+    L0H2 L0H6 L0H3 L6H6 L2H5 L2H7 L1H3 L6H4 L0H4 L4H5 L3H3 L8H4 L3H1 L0H1 L0H7 L14H4 L6H7 L14H6 L12H3 L12H1
+  action unhook ring frames=2512 k=40 spread=0.062
+    L0H2 L6H6 L2H7 L0H7 L0H6 L0H3 L0H4 L2H5 L0H1 L6H4 L1H3 L2H1 L2H6 L1H5 L2H4 L1H7 L1H4 L0H5 L1H0 L4H3
+  vlm    hook ring   frames=3680 k=40 spread=0.340
+    L3H3 L3H0 L3H1 L2H7 L2H0 L2H5 L4H1 L6H0 L1H5 L1H6 L3H6 L7H4 L5H2 L5H3 L2H3 L4H3 L4H4 L4H7 L4H0 L0H4
+  vlm    unhook ring frames=2512 k=40 spread=0.251
+    L5H2 L6H0 L5H3 L2H0 L7H4 L2H7 L3H0 L2H5 L4H1 L11H0 L1H6 L3H1 L3H3 L14H6 L3H4 L10H0 L0H4 L9H5 L1H1 L9H3
 
 top 20 shared between the tasks (%):
-  action: 75
-  vlm: 75
+  action: 55
+  vlm: 65
