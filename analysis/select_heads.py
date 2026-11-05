@@ -15,10 +15,11 @@ the way the paper's code does. Per task:
        vector, and score that vector the same way. The k with the lowest joint score wins, and
        its 20 heads are the selected heads.
 
-What we had to adapt, because the paper's robot has one arm and a gripper that is open or closed:
+What we had to adapt, because the paper's robot has one arm and ours has two, a chest and a neck:
 
-    Action      The paper's: 7 commanded joint velocities + the gripper command. Ours: the active
-                arm's (action[t + 0.1 s] - state[t]) / 0.1 s + its gripper command, not scaled.
+    Action      The paper's: its 7 commanded joint velocities + its gripper command. Ours: the same for
+                the whole robot, 25 numbers. For the 23 joints (action[t + 0.1 s] - state[t]) / 0.1 s,
+                and for the 2 grippers the command. Not scaled.
 
 We use all frames of frames.csv (10 Hz). The paper's code by default keeps only keyframes (gripper
 flips, arm almost still), and the paper says this doesn't change the outcome. On our data that
@@ -50,23 +51,24 @@ K_VALUES = (10, 20, 30, 40)
 TOP = 20
 STEP_SECONDS = 0.1  # between our kept frames (every 5th at 50 fps)
 STEP_FRAMES = 5
+ACTION_DIM = 25
 EPS = 1e-8  # the paper's code: guards divisions by zero
 STREAMS = ("action", "vlm")
 
 
 def read_actions(dataset: Path, frames: pd.DataFrame) -> np.ndarray:
-    """For the rows of frames: the (rows, 8) action of the active arm."""
+    """For the rows of frames: the (rows, 25) action of the whole robot."""
     episodes = read_episodes(dataset)
-    actions = np.zeros((len(frames), 8), dtype=np.float32)
+    grippers = list(GRIPPER_DIM.values())
+    actions = np.zeros((len(frames), ACTION_DIM), dtype=np.float32)
     for ep, kept in frames.groupby("episode_index", sort=False):
         data = read_episode_frames(dataset, episodes, ep)
         state, action = column(data, "observation.state"), column(data, "action")
-        gripper = GRIPPER_DIM[kept["active_arm"].iloc[0]]
-        joints = np.arange(gripper - 7, gripper)
         t = kept["frame_index"].to_numpy()
         later = np.minimum(t + STEP_FRAMES, len(data) - 1)
-        velocity = (action[later][:, joints] - state[t][:, joints]) / STEP_SECONDS
-        actions[kept.index] = np.column_stack([velocity, action[t, gripper]])
+        target = (action[later] - state[t]) / STEP_SECONDS
+        target[:, grippers] = action[t][:, grippers]
+        actions[kept.index] = target
     return actions
 
 
@@ -93,7 +95,7 @@ def score(nearest: np.ndarray, distance: np.ndarray, y: np.ndarray, k: int) -> f
 
 
 def select(x: np.ndarray, y: np.ndarray, episode: np.ndarray) -> dict:
-    """The selection for one task. x: (frames, heads, dim) head outputs, y: (frames, 8) actions."""
+    """The selection for one task. x: (frames, heads, dim) head outputs, y: (frames, 25) actions."""
     same_episode = episode[:, None] == episode[None, :]
     k_max = max(K_VALUES)
     per_head = np.zeros((len(K_VALUES), x.shape[1]))

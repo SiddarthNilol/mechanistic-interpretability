@@ -154,8 +154,7 @@ between runs that both use RTC or both don't.
 ## Head selection on a new task: tower stack (`towerstack/`)
 
 Separate from the steps above, with no labels or annotation. First pick 20 random episodes, and read
-what it prints: the dataset's task strings if it has several (then add `--task "<string>"`), and each
-episode's active arm, to check against the videos. Then run the selection, which takes one GPU job:
+what it prints: the dataset's task strings if it has several (then add `--task "<string>"`). Then run the selection, which takes one GPU job:
 
 ```bash
 DATA=<path to the tower stack dataset>

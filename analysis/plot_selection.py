@@ -2,13 +2,13 @@
 
     python analysis/plot_selection.py --heads pi05_base_denoised
 
-All errors are the action error of select_heads.py, at each task's chosen k. Lower is better.
+Works for any number of tasks. All errors are the action error of select_heads.py, at each task's chosen k. Lower is better.
 
 Writes to <heads>/figures/:
 
     selection_heatmaps.png   one 18 x 8 map (layer x head) per task and model part. Darker = lower
                              error. The 20 lowest-error heads are outlined.
-    selected_heads.png       which action-expert heads were selected for hook ring, unhook ring or both
+    selected_heads.png       which action-expert heads were selected (for two tasks: by which task)
     selection_layers.png     every head's error against its layer, with each layer's mean
     selection_k.png          the error of the 20 best heads joined, for each k
 """
@@ -30,12 +30,9 @@ from matplotlib.patches import Patch  # noqa: E402
 
 from plot_heads import BLUES, INK, MUTED, draw_map, head_map  # noqa: E402
 
-TASKS = ("hook ring", "unhook ring")
 STREAMS = {"action": "action expert, first action token", "vlm": "VLM, last prompt token"}
 LAYERS, HEADS = 18, 8
 TOP = 20
-# Clips the color scale: a few VLM layer 0 heads reach 0.47 and would wash out everything else.
-MAP_MIN, MAP_MAX = 0.08, 0.14
 HOOK, UNHOOK, BOTH = "#2a78d6", "#eb6834", "#1baf7a"
 GRID = "#e4e3df"
 
@@ -49,6 +46,10 @@ def clean(ax):
         side.set_visible(False)
 
 
+def tasks_of(selection: dict) -> list[str]:
+    return sorted({task for _, task in selection})
+
+
 def chosen_scores(scores: pd.DataFrame, selection: dict, stream: str, task: str) -> pd.DataFrame:
     """One row per head, at the k chosen for this stream and task."""
     k = selection[stream, task]["best_k"]
@@ -60,16 +61,21 @@ def top_heads(table: pd.DataFrame) -> list[tuple[int, int]]:
 
 
 def plot_heatmaps(scores, selection, out: Path):
-    fig, axes = plt.subplots(2, 2, figsize=(9.2, 8.4), layout="constrained")
-    for row, task in enumerate(TASKS):
+    tasks = tasks_of(selection)
+    chosen = pd.concat(chosen_scores(scores, selection, s, t) for s in STREAMS for t in tasks)
+    # The scale ends at the action expert's worst head: some VLM layer 0 heads are several times
+    # worse, would wash out everything else, and show as the palest color.
+    low, high = chosen["score"].min(), chosen.loc[chosen["stream"] == "action", "score"].max()
+    fig, axes = plt.subplots(len(tasks), 2, figsize=(9.2, 4.2 * len(tasks)), squeeze=False, layout="constrained")
+    for row, task in enumerate(tasks):
         for col, stream in enumerate(STREAMS):
             t = chosen_scores(scores, selection, stream, task)
             best = t.loc[t["score"].idxmin()]
             title = (f"{task} · {STREAMS[stream]}\nbest L{best['layer']}H{best['head']}: {best['score']:.3f}, "
                      f"median {t['score'].median():.3f}, k={selection[stream, task]['best_k']}")
-            image = draw_map(axes[row, col], -head_map(t, "score"), -MAP_MAX, -MAP_MIN, top_heads(t), title)
-    bar = fig.colorbar(image, ax=axes, shrink=0.35, ticks=[-0.14, -0.12, -0.10, -0.08])
-    bar.ax.set_yticklabels(["0.14 or more", "0.12", "0.10", "0.08"], fontsize=8, color=MUTED)
+            image = draw_map(axes[row, col], -head_map(t, "score"), -high, -low, top_heads(t), title)
+    bar = fig.colorbar(image, ax=axes, shrink=0.35, ticks=[-high, -low])
+    bar.ax.set_yticklabels([f"{high:.3f} or more", f"{low:.3f}"], fontsize=8, color=MUTED)
     bar.set_label("action error (darker = lower, better)", fontsize=8, color=MUTED)
     bar.outline.set_visible(False)
     fig.suptitle(f"How well each head predicts the action (outlined: the {TOP} lowest errors)", fontsize=10, color=INK)
@@ -77,8 +83,35 @@ def plot_heatmaps(scores, selection, out: Path):
     plt.close(fig)
 
 
+def plot_selected_one_each(selection, tasks, out: Path):
+    """One map per task, for anything but the two-task comparison in plot_selected."""
+    fig, axes = plt.subplots(1, len(tasks), figsize=(4.6 * len(tasks), 7), squeeze=False, layout="constrained")
+    for ax, task in zip(axes[0], tasks):
+        grid = np.zeros((LAYERS, HEADS))
+        for layer, head in selection["action", task]["heads"]:
+            grid[layer, head] = 1
+        ax.imshow(grid, cmap=ListedColormap(["#f1f0ec", HOOK]), vmin=0, vmax=1, aspect="auto")
+        ax.set_xticks(np.arange(-0.5, HEADS), minor=True)
+        ax.set_yticks(np.arange(-0.5, LAYERS), minor=True)
+        ax.grid(which="minor", color="white", linewidth=2)
+        ax.tick_params(which="both", length=0, labelsize=8, colors=MUTED)
+        ax.set_xticks(range(HEADS))
+        ax.set_yticks(range(LAYERS))
+        ax.set_xlabel("head", fontsize=8, color=MUTED)
+        ax.set_ylabel("layer", fontsize=8, color=MUTED)
+        for side in ax.spines.values():
+            side.set_visible(False)
+        ax.set_title(f"{task}: the {TOP} selected action-expert heads", fontsize=10, color=INK, loc="left")
+    fig.savefig(out / "selected_heads.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_selected(selection, out: Path):
     """The selected heads themselves. The paper selects from the action expert only."""
+    tasks = tasks_of(selection)
+    if len(tasks) != 2:
+        plot_selected_one_each(selection, tasks, out)
+        return
     hook = {tuple(h) for h in selection["action", "hook ring"]["heads"]}
     unhook = {tuple(h) for h in selection["action", "unhook ring"]["heads"]}
     grid = np.zeros((LAYERS, HEADS), dtype=int)
@@ -119,8 +152,10 @@ def plot_selected(selection, out: Path):
 
 
 def plot_layers(scores, selection, out: Path):
-    fig, axes = plt.subplots(2, 2, figsize=(10, 6.6), sharex=True, sharey="col", layout="constrained")
-    for row, task in enumerate(TASKS):
+    tasks = tasks_of(selection)
+    fig, axes = plt.subplots(len(tasks), 2, figsize=(10, 3.3 * len(tasks)), squeeze=False, sharex=True, sharey="col",
+                             layout="constrained")
+    for row, task in enumerate(tasks):
         for col, stream in enumerate(STREAMS):
             ax = axes[row, col]
             t = chosen_scores(scores, selection, stream, task)
@@ -130,7 +165,7 @@ def plot_layers(scores, selection, out: Path):
             ax.set_title(f"{task} · {STREAMS[stream]}", fontsize=9, color=INK, loc="left")
             ax.set_xticks(range(0, LAYERS, 2))
             clean(ax)
-            if row == 1:
+            if row == len(tasks) - 1:
                 ax.set_xlabel("layer", fontsize=8, color=MUTED)
             if col == 0:
                 ax.set_ylabel("action error (lower is better)", fontsize=8, color=MUTED)
@@ -144,7 +179,7 @@ def plot_layers(scores, selection, out: Path):
 def plot_k(selection, out: Path):
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.4), sharey=True, layout="constrained")
     for ax, stream in zip(axes, STREAMS):
-        for task, color in zip(TASKS, (HOOK, UNHOOK)):
+        for task, color in zip(tasks_of(selection), (HOOK, UNHOOK)):
             row = selection[stream, task]
             ks = sorted(int(k) for k in row["joint_score"])
             values = [row["joint_score"][str(k)] for k in ks]
@@ -158,8 +193,6 @@ def plot_k(selection, out: Path):
         ax.set_title(STREAMS[stream], fontsize=9, color=INK, loc="left")
         clean(ax)
     axes[0].set_ylabel("error of the 20 best heads, joined", fontsize=8, color=MUTED)
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="outside lower center", ncol=2, frameon=False, fontsize=8)
     fig.suptitle("Effect of k on the joined heads", fontsize=10, color=INK)
     fig.savefig(out / "selection_k.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
