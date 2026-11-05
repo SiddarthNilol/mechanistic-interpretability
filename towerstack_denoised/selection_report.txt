@@ -1,8 +1,0 @@
-done: action stack_rings
-done: vlm stack_rings
-
-selection (the paper's uses the action stream; its score spread: 0.47 action, 0.05 vlm):
-  action stack_rings frames=5245 k=40 spread=0.024
-    L0H2 L0H6 L0H3 L6H6 L2H7 L6H4 L3H0 L2H5 L12H4 L4H5 L12H0 L14H7 L0H0 L3H1 L2H3 L12H5 L0H7 L14H6 L6H3 L10H0
-  vlm    stack_rings frames=5245 k=40 spread=0.178
-    L2H0 L2H7 L3H0 L3H1 L4H1 L1H4 L1H6 L7H4 L4H0 L6H0 L2H5 L1H1 L1H3 L3H3 L4H7 L0H4 L10H4 L10H0 L4H4 L3H6
