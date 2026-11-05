@@ -117,6 +117,7 @@ DATA=/scratch/sk12590/ultrarobot-data/unhook-hook-data
 H=$SCRATCH/mechanistic-interpretability/pi05_base_denoised
 
 python analysis/select_heads.py --dataset $DATA --heads $H | tee $H/selection_report.txt
+python analysis/plot_selection.py --heads $H   # figures/selection_*.png, selected_heads.png
 ```
 
 ## 6. Fine-tuning with the selected heads (`finetune/`, GPU job)
@@ -149,6 +150,22 @@ PYTHONPATH=. $SCRATCH/lair-openpi/.venv/bin/python -m server.server_openpi \
 `finetune_job.sh` always passes `--rtc-train`, so serve its checkpoints with `--rtc-train` as above.
 Delays are 0 to 14 control steps by default, the same as the server's. Compare held-out losses only
 between runs that both use RTC or both don't.
+
+## Head selection on a new task: tower stack (`towerstack/`)
+
+Separate from the steps above, with no labels or annotation. First pick 20 random episodes, and read
+what it prints: the dataset's task strings if it has several (then add `--task "<string>"`), and how
+many episodes use both arms. Then run the selection, which takes one GPU job:
+
+```bash
+DATA=<path to the tower stack dataset>
+python towerstack/prepare_episodes.py --dataset $DATA   # towerstack/prepared/episodes.csv, frames.csv
+DATA=$DATA sbatch towerstack/towerstack_job.sh
+#   -> $SCRATCH/mechanistic-interpretability/towerstack_denoised
+```
+
+Copy `selection_report.txt`, `selected_heads.json` and `selection_scores.csv` from there into
+`towerstack/results/` in the local repository.
 
 ## 7. Results to the Mac
 

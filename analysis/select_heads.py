@@ -156,10 +156,11 @@ def main():
         heads = " ".join(f"L{layer}H{head}" for layer, head in s["heads"])
         print(f"  {s['stream']:6} {s['task']:11} frames={s['n_frames']:4} k={s['best_k']} spread={s['cv']:.3f}\n    {heads}")
 
-    print("\ntop 20 shared between the tasks (%):")
-    for stream in STREAMS:
-        first, second = ({tuple(h) for h in s["heads"]} for s in selected if s["stream"] == stream)
-        print(f"  {stream}: {100 * len(first & second) / TOP:.0f}")
+    if frames["task"].nunique() == 2:
+        print("\ntop 20 shared between the tasks (%):")
+        for stream in STREAMS:
+            first, second = ({tuple(h) for h in s["heads"]} for s in selected if s["stream"] == stream)
+            print(f"  {stream}: {100 * len(first & second) / TOP:.0f}")
 
 
 if __name__ == "__main__":
