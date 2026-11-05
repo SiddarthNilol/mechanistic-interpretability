@@ -6,13 +6,15 @@ No phases or other labels are needed, so unlike data_prep/ nothing is annotated 
 episodes from those not in meta/excluded_episodes.json and keeps every 5th frame, as for hook and
 unhook ring. If the dataset has several task strings, --task says which one to use.
 
-select_heads.py predicts one arm's action per episode, so this also finds that arm: the one whose
-gripper closes furthest. The grasp counts show whether that is a fair summary of an episode: if both
-arms grasp, the other arm's actions aren't scored.
+select_heads.py predicts one arm's action per episode, and only one arm grasps in each episode. That
+arm is taken to be the one whose commanded joints move furthest over the episode. common.active_arm
+(the gripper that closes furthest) labels this dataset wrongly, so it isn't used here. Check the
+printed arms against the videos: a travel ratio near 1 means the two arms moved about equally, and
+such a label is the least certain.
 
 Writes to --out:
 
-    episodes.csv   episode_index, length, task, active_arm, grasps_left, grasps_right
+    episodes.csv   episode_index, length, task, active_arm, travel_left, travel_right (radians)
     frames.csv     episode_index, frame_index, task, active_arm: the input of extract_heads.py
 """
 
@@ -26,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "data_prep"))
-from common import GRIPPER_DIM, active_arm, count_grasps, gripper, read_episode_frames, read_episodes, read_excluded, read_info  # noqa: E402
+from common import GRIPPER_DIM, column, read_episode_frames, read_episodes, read_excluded, read_info  # noqa: E402
 
 STRIDE = 5
 FPS = 50  # select_heads.py and every earlier result assume 5 frames = 0.1 s
@@ -40,6 +42,15 @@ def choose_task(tasks: pd.Series, task: str | None) -> str:
     if task in counts.index:
         return task
     raise ValueError(f"choose one with --task. Usable episodes per task:\n{counts.to_string()}")
+
+
+def arm_travel(frames: pd.DataFrame) -> dict[str, float]:
+    """Per arm, how far its 7 commanded joints move over the episode, added up."""
+    action = column(frames, "action")
+    return {
+        arm: float(np.abs(np.diff(action[:, gripper - 7 : gripper], axis=0)).sum())
+        for arm, gripper in GRIPPER_DIM.items()
+    }
 
 
 def main():
@@ -66,11 +77,11 @@ def main():
     episode_rows, frame_rows = [], []
     for ep in picked:
         frames = read_episode_frames(args.dataset, episodes, ep)
-        arm = active_arm(frames)
-        grasps = {side: count_grasps(gripper(frames, side)) for side in GRIPPER_DIM}
+        travel = arm_travel(frames)
+        arm = max(travel, key=travel.get)
         episode_rows.append(
             {"episode_index": ep, "length": len(frames), "task": task, "active_arm": arm,
-             "grasps_left": grasps["left"], "grasps_right": grasps["right"]}
+             "travel_left": round(travel["left"], 2), "travel_right": round(travel["right"], 2)}
         )
         kept = np.arange(0, len(frames), STRIDE)
         frame_rows.append(pd.DataFrame({"episode_index": ep, "frame_index": kept, "task": task, "active_arm": arm}))
@@ -81,11 +92,9 @@ def main():
     table.to_csv(args.out / "episodes.csv", index=False)
     frames_table.to_csv(args.out / "frames.csv", index=False)
 
-    print(table.to_string(index=False))
-    both = int(((table["grasps_left"] > 0) & (table["grasps_right"] > 0)).sum())
-    neither = int(((table["grasps_left"] == 0) & (table["grasps_right"] == 0)).sum())
+    ratio = table[["travel_left", "travel_right"]].max(axis=1) / table[["travel_left", "travel_right"]].min(axis=1)
+    print(table.assign(travel_ratio=ratio.round(1)).to_string(index=False))
     print(f"{len(frames_table)} frames; arms: {table['active_arm'].value_counts().to_dict()}")
-    print(f"episodes where both arms grasp: {both}; where neither does: {neither}")
     print(f"wrote {args.out}")
 
 
