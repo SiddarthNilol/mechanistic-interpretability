@@ -216,7 +216,9 @@ classifying tasks.
 synthetic data. Three things change from the section above:
 
 - **Input:** the first action token now receives the model's own predicted actions instead of noise.
-- **Target:** 8 numbers, which are the active arm's 7 joint speeds plus its gripper. They are not
+- **Target:** the paper's robot has one arm, so its target is that arm's 7 joint speeds plus its
+  gripper. Ours is the same for the whole robot: 25 numbers. For the 23 joints (both arms, chest
+  and neck), each is the speed over the next 0.1 s; for the 2 grippers, the command. They are not
   scaled.
 - **Frames:** we use all frames rather than the paper's keyframes, because the paper's rule would
   leave almost no frames in the contact phases.
@@ -225,74 +227,66 @@ For each k, the code joins the outputs of that k's 20 best heads into one long v
 the same way. The k with the lowest error wins, and its 20 heads are the **selected heads**. The
 paper selects at the first action token, so these are the action expert's heads.
 
-- Hook ring (k=40): L0H2 L0H6 L0H3 L6H6 L2H5 L2H7 L1H3 L6H4 L0H4 L3H1 L4H5 L3H3 L3H0 L8H4 L14H4
-  L14H2 L0H1 L0H7 L12H5 L6H7
-- Unhook ring (k=20): L0H2 L0H6 L0H3 L2H7 L0H7 L2H5 L6H6 L0H4 L1H3 L6H4 L0H1 L3H0 L3H1 L1H1 L3H3
-  L4H5 L0H5 L1H5 L2H6 L1H0
+- Hook ring (k=40): L0H2 L0H6 L0H3 L6H6 L2H5 L2H7 L1H3 L6H4 L0H4 L4H5 L3H3 L8H4 L3H1 L0H1 L0H7
+  L14H4 L6H7 L14H6 L12H3 L12H1
+- Unhook ring (k=40): L0H2 L6H6 L2H7 L0H7 L0H6 L0H3 L0H4 L2H5 L0H1 L6H4 L1H3 L2H1 L2H6 L1H5 L2H4
+  L1H7 L1H4 L0H5 L1H0 L4H3
 
 Figures are in `pi05_base_denoised/figures/`: `selected_heads.png` shows these heads, and
 `selection_heatmaps.png`, `selection_layers.png` and `selection_k.png` show the errors behind them.
 
+**An earlier version scored only the active arm's 8 numbers.** Switching to the whole robot kept 17
+of the 20 selected heads in hook ring and 15 of 20 in unhook ring. The order of all 144 heads barely
+changed (rank correlation 0.96-0.97, where 1 is identical order). The unhook-ring fine-tuning runs
+used that earlier selection.
+
 ### How well they predict
 
-**What the error means here.** It is the squared difference averaged over the 8 numbers, with joint
-speeds in rad/s and the gripper from 0 to 1. So it is on a different scale from the 25-dimension
-errors in the section above, and the two can't be compared directly. An error of 0.113 means a
-typical miss of about 0.34 (its square root) per number. The gripper counts about as much as a
-fast-moving joint.
+**What the error means here.** It is the squared difference averaged over the 25 numbers, with joint
+speeds in rad/s and the grippers from 0 to 1. So it is on a different scale from the errors in the
+section above, and the two can't be compared directly. An error of 0.045 means a typical miss of
+about 0.21 (its square root) per number. The arms and grippers make up over 90% of the variation in
+the target; the chest and neck make up about 6-7%, so they count for little.
 
-The easiest way to read these values is the last two columns. They show how much lower each error is
-than the first row, which is the error from always guessing the average action.
-
-| prediction | error: hook ring | error: unhook ring | better than guessing the average: hook ring | better than guessing the average: unhook ring |
+| prediction | error: hook ring | error: unhook ring | lower than the median head: hook ring | lower than the median head: unhook ring |
 |---|---|---|---|---|
-| Guess the average action of the task's other episodes (no head) | 0.137 | 0.133 | - | - |
-| Median head | 0.130 | 0.124 | 5% | 7% |
-| The 20 selected heads, joined | 0.113 | 0.110 | 18% | 17% |
-| Best head (L0H2) | 0.095 | 0.089 | 31% | 33% |
-| Time only (no head; see below) | 0.100 | 0.086 | 27% | 35% |
-
-**The two no-head rows are extra checks we added.** They are not part of the paper's method, and
-they come from a one-off script that is not in the repository. The **time-only** row predicts a
-frame's action by averaging other episodes' frames at the same point in the episode, for example
-40% of the way through. It uses a plain average and knows each episode's total length, which a head
-doesn't and which isn't known during a real run. So it has an advantage over the heads.
+| Median head | 0.051 | 0.051 | - | - |
+| The 20 selected heads, joined | 0.045 | 0.047 | 12% | 8% |
+| Best head (L0H2) | 0.039 | 0.041 | 24% | 19% |
 
 ### How much heads differ
 
 | score spread | paper | ours |
 |---|---|---|
-| First action token (action expert) | 0.47 | 0.058 hook ring, 0.078 unhook ring |
-| Last prompt token (VLM) | 0.05 | 0.32 hook ring, 0.27 unhook ring |
+| First action token (action expert) | 0.47 | 0.053 hook ring, 0.062 unhook ring |
+| Last prompt token (VLM) | 0.05 | 0.34 hook ring, 0.25 unhook ring |
 
 ### Conclusions from the selection
 
 13. **Following the paper's code does not make heads differ the way they do in the paper.** At the
-    first action token, the spread is 0.06-0.08 against the paper's 0.47, so our action-expert heads
+    first action token, the spread is 0.05-0.06 against the paper's 0.47, so our action-expert heads
     are nearly alike. The paper's ordering is also reversed, as ours spreads more at the last prompt
     token. Most of that comes from the VLM's layer 0 heads, which are clearly the worst (average
-    error 0.21-0.24 against 0.11-0.12 for other layers). Without layer 0 the spread is 0.12-0.14.
+    error 0.09-0.10 against 0.05 for other layers). Without layer 0 the spread is 0.10-0.12.
     Our robot, target and frames still differ from the paper's.
-14. **Joining the 20 selected heads does not beat the best single head, or the time-only check.**
-    Joined, they reach 0.113 and 0.110, against 0.095 and 0.089 for the best head, and 0.100 and 0.086
-    for time only. Only two single heads beat time only in hook ring (L0H2, L0H6), and none do in
-    unhook ring. Time only has the advantage described above, so this suggests, but does not prove,
-    that the heads add little beyond timing.
-15. **A typical head adds little.** The median head's error is only 5-7% lower than always guessing the
-    average action.
-16. **The selection barely separates the tasks.** The two tasks share 15 of their 20 selected heads. About
-    3 would be shared by chance, and about 8.5 if only each head's layer mattered. So the same
-    individual heads win in both tasks, which makes them look general rather than task-specific.
-17. **The selection favours early layers.** 12 of 20 selected heads in hook ring and 17 of 20 in unhook
-    ring are in layers 0-3. A head's layer alone accounts for 46% and 79% of the differences between
+14. **Joining the 20 selected heads does not beat the best single head.** Joined, they reach 0.045 and
+    0.047, against 0.039 and 0.041 for L0H2 alone.
+15. **Most heads are close to the median.** The best head is 19-24% better than the median head, but
+    the spread above shows that most heads sit within about 5-6% of the average.
+16. **The selection barely separates the tasks.** The two tasks share 11 of their 20 selected heads.
+    About 3 would be shared by chance, and about 8 if only each head's layer mattered. The best head,
+    L0H2, is the same in both.
+17. **The selection favours early layers.** 11 of 20 selected heads in hook ring and 17 of 20 in unhook
+    ring are in layers 0-3. A head's layer alone accounts for 47% and 84% of the differences between
     heads.
-18. **Changing what the action tokens receive changes which heads win.** Only 4-5 of the 20 selected
+18. **Changing what the action tokens receive changes which heads win.** Only 4 of the 20 selected
     heads were also in the earlier motion top 20, and none in the earlier position top 20. The target
     changed too, so to separate the two causes we looked at the last prompt token, where the action
-    tokens' input has no effect: there, 16-18 of 20 stay the same for motion. So most of the change
+    tokens' input has no effect: there, 17-19 of 20 stay the same for motion. So most of the change
     comes from the input.
-19. **k matters little.** In unhook ring, k=20 wins by under 0.5%. Changing k keeps 18-20 of the
-    selected heads in the top 20 at the first action token (16-20 at the last prompt token).
+19. **k matters little.** k=40, the largest value tried, wins in all four cases, but by only 0.3-2.9%.
+    Changing k keeps 17-20 of the selected heads in the top 20 at the first action token (16-20 at
+    the last prompt token).
 
 We have not checked whether the same heads would be selected on new episodes.
 
