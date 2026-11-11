@@ -23,9 +23,13 @@ python src/prepare.py
 
 ## 2. Test the code (optional, CPU, about 2 minutes)
 
-Two small random models, no checkpoints needed. Run after any change to `src/pair.py`:
+Two small random models, no checkpoints needed. Run after any change to `src/pair.py`.
+Not on a login node: the process gets killed there for using too much memory (the vision encoder
+is full size even in the small models). Use an interactive session:
 
 ```bash
+srun --account=torch_pr_564_tandon_advanced --cpus-per-task=8 --mem=32G --time=0:30:00 --pty bash
+cd $SCRATCH/mechanistic-interpretability/model_diffing && source jobs/env.sh
 python src/check_pair.py
 ```
 
