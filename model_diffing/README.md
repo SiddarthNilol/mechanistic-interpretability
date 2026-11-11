@@ -28,26 +28,9 @@ Each figure script saves its numbers to `results/data/` and can redraw with `--p
 
 ## Commands
 
-```bash
-cd $SCRATCH/mechanistic-interpretability/model_diffing
-
-# every shell: activates $SCRATCH/lair-openpi/.venv and sends every cache to $SCRATCH/.cache, not /home
-source jobs/env.sh
-
-# 1. once, on a login node (needs internet): the state list is already in results/states.json;
-#    this downloads its 80 episode files (2.5 GB), both checkpoints (25 GB) and the tokenizer
-python src/prepare.py
-
-# 2. F1 + F2 (no GPU)
-sbatch jobs/weights_job.sh
-
-# 3. sanity check, then F3 to F7 on one GPU (about 1 hour, not measured yet)
-sbatch jobs/gpu_job.sh
-#    or only some steps:  sbatch jobs/gpu_job.sh f3 f4
-```
-
-Then copy `results/figures/`, `results/data/*.json`, `results/data/f1_table.md` and
-`results/run_log.md` back, and fill in `results/summary.md`.
+Step by step in `COMMANDS.md`. In short: `source jobs/env.sh`, `python src/prepare.py` once on a
+login node, then `sbatch jobs/weights_job.sh` (F1, F2) and `sbatch jobs/gpu_job.sh` (sanity check,
+F3 to F7).
 
 The environment is the existing lair-openpi one. That fork differs from upstream openpi only in
 additions that are off by default (train-time RTC, loss options, dataset hooks); the inference
@@ -64,14 +47,7 @@ Only after F1 to F7. Needs the LIBERO simulator in its own Python 3.8 environmen
 `third_party/openpi/examples/libero/README.md` ("Without Docker"), after
 `git -C third_party/openpi submodule update --init --recursive`.
 
-```bash
-# GPU node, openpi environment
-python src/f8_steer_server.py --layer 9 --port 8000
-# same node, LIBERO environment
-python src/f8_rollout.py --out results/data/f8_rollouts.jsonl
-# afterwards, openpi environment
-python src/f8_plot.py
-```
+The commands are in `COMMANDS.md`, step 7.
 
 The three F8 scripts were tested only up to the simulator: the steered policy answers requests
 (on a small random model), and the plot was drawn from made-up records. Run one episode per
