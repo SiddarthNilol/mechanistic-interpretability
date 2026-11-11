@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 
 import numpy as np
 
@@ -65,6 +67,7 @@ def main():
     parser.add_argument("--no-download", action="store_true")
     args = parser.parse_args()
 
+    print("prepare.py started", flush=True)
     if STATES_FILE.exists():
         print(f"{STATES_FILE} exists, keeping it (delete it to resample)")
         sampled = json.loads(STATES_FILE.read_text())
@@ -82,6 +85,7 @@ def main():
         return
 
     episodes = sorted({s["episode_index"] for s in states})
+    print(f"downloading {len(episodes)} episode files (about 30 MB each) to {os.environ.get('HF_HOME', '~/.cache/huggingface')}", flush=True)
     for i, episode in enumerate(episodes):
         dataset_file(episode_file(episode), sampled["revision"])
         print(f"\repisode files: {i + 1}/{len(episodes)}", end="", flush=True)
@@ -92,10 +96,16 @@ def main():
 
     import pair as P
 
+    logging.basicConfig(level=logging.INFO, force=True)  # openpi reports its downloads through logging
+    cache = os.environ.get("OPENPI_DATA_HOME", "~/.cache/openpi")
+    print("downloading the tokenizer", flush=True)
     PaligemmaTokenizer(P.model_config().max_token_len)
     for name, uri in P.CHECKPOINTS.items():
-        print(f"checkpoint {name}: {download.maybe_download(uri + '/params')}")
-    print(f"norm stats: {download.maybe_download(P.CHECKPOINTS['ft'] + '/assets')}")
+        print(f"downloading checkpoint {name} (12.4 GB, can take 10 minutes or more) to {cache}\n"
+              f"  to watch it from another shell: du -sh {cache}/openpi-assets/checkpoints/*", flush=True)
+        print(f"checkpoint {name}: {download.maybe_download(uri + '/params')}", flush=True)
+    print(f"norm stats: {download.maybe_download(P.CHECKPOINTS['ft'] + '/assets')}", flush=True)
+    print("done: everything the jobs need is downloaded", flush=True)
 
 
 if __name__ == "__main__":
