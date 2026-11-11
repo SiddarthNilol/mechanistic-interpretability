@@ -94,3 +94,13 @@ run on a GPU yet.
 ## Runs
 
 Every script appends its run below (command, checkpoints, seed, states, wall time).
+
+### F1 + F2 (weights), 2026-11-11 17:57
+
+- command: `python src/f1_f2_weights.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22746373
+- seed: 0 (not used: no sampling)
+- states: 0 (weights only)
+- wall time: 2.9 min
