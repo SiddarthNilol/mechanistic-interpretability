@@ -1,7 +1,7 @@
 # Preliminary results: where fine-tuning changes a VLA, and what its action expert reads
 
 Status: F1 to F7 were run on 2026-11-11 (one H200, about 35 minutes of compute; details in
-`run_log.md`). The sanity check passed exactly: patching a model's own activations into itself
+`run_log.md`). F6 and F7 were rerun the same day with 8 times the probe vectors (59 minutes). The sanity check passed exactly: patching a model's own activations into itself
 changed the actions by 0, and our forward code matched openpi's with difference 0. F8 has not
 been run.
 
@@ -13,8 +13,9 @@ Three things to take away, each a pilot result:
 2. Task progress is decodable (R^2 about 0.8), but already from the token embeddings before any
    backbone layer, so the probe may be reading the images, not a computed progress signal (F5).
 3. H3 is not supported: the progress direction is more readable by the action expert than a
-   random direction, not less (F7). The size k of the readable subspace is not yet a reliable
-   number (F6).
+   random direction, not less (F7). This held when F6 was rerun with 8 times the probe vectors.
+   The readable subspace is not small: pooled over states it is at least 800 of 2048 directions
+   after layers 3 and 9, and still growing with the sample (F6).
 
 Caveat for every figure: `pi05_libero` was fine-tuned on the full LIBERO data, so base vs
 `pi05_libero` is a large fine-tune. The few-demo regime is parked for now (decided 2026-11-11)
@@ -103,43 +104,49 @@ recomputes them from the weights and writes `results/data/f1_table.md`.)
 
 ## F6. Action-readable spectrum
 
-- Shows: with 1440 probe vectors, 90% of the measured sensitivity lies in k = 335, 313 and 197
-  directions after layers 3, 9 and 15, out of 2048. This k is NOT converged: on half of the
-  states it is 191, 181 and 125, so it grows with the sample and the true value is probably
-  higher. What is solid: the spectrum is far from flat (a flat one would give k near 1300), and
-  no single direction dominates (the top direction holds 2% to 5%). The total sensitivity after
-  layer 15 is about 100 times smaller than after layers 3 and 9, because only layers 16 to 18
-  read that residual.
-- Does not show: a global property. M is a first-order sensitivity at zero shift, on training
-  states and three flow times. The estimate uses 1440 probe vectors per layer and cannot resolve
-  more directions than that; if k comes out near that ceiling, more probes are needed.
-- Previews: the full estimate of the readable subspace at every layer, for the base and the
-  fine-tuned model, and how fine-tuning changes it.
+- Shows (rerun: 240 states x 3 flow times x 16 probes = 11520 probe vectors per layer): 90% of
+  the measured sensitivity lies in k = 802, 749 and 421 directions after layers 3, 9 and 15, out
+  of 2048. These are lower bounds, not estimates: k still grows with the sample (575, 548 and
+  304 on half of the states; 335, 313 and 197 in the first run with 1440 vectors). Adding states
+  raises k faster than adding probes per state (the last doubling: +37% from states, +16% from
+  probes, after layer 3), so different states are read along different directions. The pooled
+  readable subspace is therefore not small. The sensitivity is still uneven: half of it lies in
+  171, 138 and 25 directions, and after layer 15 the top 10 directions hold 32%. The total
+  sensitivity after layer 15 is about 100 times smaller than after layers 3 and 9, because only
+  layers 16 to 18 read that residual.
+- Does not show: a converged k, or "the action expert reads few directions". For one state and
+  one flow time the readable subspace has at most 70 directions (70 output numbers); the pooled
+  one is large because it varies with the state. M is a first-order sensitivity at zero shift,
+  on training states and three flow times.
+- Previews: the full project should measure readability per state (or per task) and not through
+  one pooled subspace with a fixed k, at every layer, for the base and the fine-tuned model.
 
 ## F7. Readable fraction of candidate directions
 
-- Shows (fine-tuned model; chance = k / 2048, random directions have s.d. 0.01):
+- Shows (fine-tuned model, on the rerun F6 subspace; chance = k / 2048, random directions have
+  s.d. 0.01):
 
-  | after layer | progress probe | fine-tuning shift | chance |
-  |---|---|---|---|
-  | 3 | 0.22 | 0.04 | 0.16 |
-  | 9 | 0.27 | 0.04 | 0.15 |
-  | 15 | 0.14 | 0.27 | 0.10 |
+  | after layer | progress probe | fine-tuning shift | chance | gain, progress | gain, shift |
+  |---|---|---|---|---|---|
+  | 3 | 0.52 | 0.07 | 0.39 | 1.5 | 0.39 |
+  | 9 | 0.56 | 0.07 | 0.37 | 2.2 | 0.29 |
+  | 15 | 0.26 | 0.36 | 0.21 | 1.8 | 5.8 |
 
-  H3 predicted a low rho for progress. The pilot shows the opposite: the progress direction is
-  1.3 to 1.8 times more readable than chance at all three layers, and its k-free gain is 1.5 to
-  2.1 times that of an average direction (2.7 to 4.8 times for the late-minus-early mean
-  difference). So "the action expert cannot see progress" does not explain why progress does
-  not steer. The fine-tuning shift is far below chance after layers 3 and 9 and far above it
-  after layer 15 (gain 6.5), in line with F4: what fine-tuning changes becomes visible to the
-  action expert late in the backbone.
-- Does not show: steering. rho is a prediction about steering, not a test of it. Above chance is
-  still small in absolute terms (rho 0.14 to 0.27: most of the direction lies outside the
-  subspace), and rho inherits F6's unconverged k (the comparison with random directions uses the
-  same k, so it is less affected). The progress direction is one probe's weight vector; `f7.json` also has rho for the late-minus-early mean
-  difference as a second definition.
-- Previews: the test of H3 in the full project: does rho predict, across many directions, which
-  ones steer the robot in closed loop.
+  Gain is v^T M v / ||v||^2 relative to an average direction; it does not depend on k. H3
+  predicted a low rho for progress. The pilot shows the opposite: the progress direction is 1.2
+  to 1.5 times more readable than chance at all three layers, with gain 1.5 to 2.2 (2.9 to 4.7
+  for the late-minus-early mean difference). So "the action expert cannot see progress" does not
+  explain why progress does not steer. The fine-tuning shift is far below chance after layers 3
+  and 9 and far above it after layer 15, in line with F4: what fine-tuning changes becomes
+  visible to the action expert late in the backbone. The gains barely moved between the two F6
+  runs (first run: progress 1.5 to 2.1, shift 0.37, 0.29, 6.5), so these conclusions do not
+  depend on the unconverged k. The rho values do: they rose with k.
+- Does not show: steering. rho and gain are predictions about steering, not a test of it. The
+  progress direction is one probe's weight vector, and F5 suggests it may encode how the scene
+  looks. The pooled subspace hides that readability varies with the state (F6).
+- Previews: the test of H3 in the full project: does readability predict, across many
+  directions, which ones steer the robot in closed loop. The k-free gain, measured per state, is
+  the better predictor to carry forward.
 
 ## F8 (optional). Closed-loop steering pilot
 
