@@ -148,8 +148,14 @@ def plot(result: dict):
     ax.set_xlabel("direction (eigenvector of M, sorted)")
     ax.set_ylabel("eigenvalue of M = E[J$^T$J],\nrelative to the largest")
     ax.legend(title="dashed: k directions hold 90% of the total", loc="lower left", fontsize=11, title_fontsize=11)
-    ax.set_title(f"The action expert reads {min(ks)} to {max(ks)} of the backbone's {first['width']} directions "
-                 "(90% of its sensitivity)")
+    # k is only a finding if it has stopped growing with the number of probe vectors
+    halves = [max(e["k90_half_a"], e["k90_half_b"]) / e["k90"] for e in result["layers"].values()]
+    if min(halves) < 0.85:
+        ax.set_title(f"Not converged: k = {min(ks)} to {max(ks)} of {first['width']} directions with "
+                     f"{first['columns']} probes, but k still grows with the sample (see halves)")
+    else:
+        ax.set_title(f"The action expert reads {min(ks)} to {max(ks)} of the backbone's {first['width']} directions "
+                     "(90% of its sensitivity)")
     model = "pi05_libero" if result["model"] == "ft" else "pi05_base"
     save_figure(fig, "F6", f"Spectrum of the action expert's sensitivity to a vector added to every prefix token's "
                 f"residual, {model}, {first['states']} LIBERO training states x flow times "

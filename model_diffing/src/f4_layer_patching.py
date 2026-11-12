@@ -106,12 +106,11 @@ def plot(result: dict):
     ax.set_xlabel("backbone layer x")
     ax.set_ylabel("recovery share R (fraction of the\nbase-to-fine-tuned action change)")
     ax.legend(loc="best", fontsize=11)
-    kv = np.array(result["kv"]["R"])
-    top = np.argsort(kv)[::-1][:3]
-    residual = np.array(result["residual"]["R"])
+    kv, residual = np.array(result["kv"]["R"]), np.array(result["residual"]["R"])
+    best_kv, best_residual = int(np.argmax(kv)), int(np.argmax(residual))
     ax.set_title(
-        f"No single layer's KV recovers more than {kv.max():.0%} (best: layers "
-        f"{', '.join(str(result['kv']['x'][i]) for i in sorted(top))}); residual patch peaks at {residual.max():.0%}"
+        f"Layer {result['kv']['x'][best_kv]}'s keys and values alone recover {kv.max():.0%}; "
+        f"the residual patch peaks at {residual.max():.0%} after layer {result['residual']['x'][best_residual]}"
     )
     save_figure(fig, "F4", f"Layer-level activation patching, sufficiency direction: base run with one fine-tuned "
                 f"activation swapped in, on {result['states']} LIBERO training states; bands are 95% bootstrap "

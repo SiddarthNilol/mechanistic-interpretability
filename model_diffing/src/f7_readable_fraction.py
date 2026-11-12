@@ -93,11 +93,14 @@ def plot(result: dict):
     ax.set_ylabel("readable fraction rho = ||P$_k$v||$^2$ / ||v||$^2$")
     ax.set_ylim(0, 1.05)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2, fontsize=11)
-    progress = np.mean([result["layers"][r]["progress probe"]["rho"] for r in layers])
-    shift = np.mean([result["layers"][r]["fine-tuning shift"]["rho"] for r in layers])
-    chance = np.mean([result["layers"][r]["expected_random"] for r in layers])
-    ax.set_title(f"Readable fraction: progress direction {progress:.2f}, fine-tuning shift {shift:.2f}, "
-                 f"chance {chance:.2f} (mean of 3 layers)")
+    ratios = [result["layers"][r]["progress probe"]["rho"] / result["layers"][r]["expected_random"] for r in layers]
+    if min(ratios) > 1:
+        verdict = f"more readable than chance at every layer ({min(ratios):.1f}x to {max(ratios):.1f}x)"
+    elif max(ratios) < 1:
+        verdict = f"less readable than chance at every layer ({min(ratios):.1f}x to {max(ratios):.1f}x)"
+    else:
+        verdict = f"near chance ({min(ratios):.1f}x to {max(ratios):.1f}x, depending on the layer)"
+    ax.set_title(f"The progress direction is {verdict}")
     model = "pi05_libero" if result["model"] == "ft" else "pi05_base"
     save_figure(fig, "F7", f"Fraction of each direction inside the action-readable subspace of {model} (top k "
                 "eigenvectors of M from F6, holding 90% of its total). H3 predicts that the progress direction has "
