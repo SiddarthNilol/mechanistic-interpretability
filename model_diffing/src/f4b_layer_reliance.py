@@ -178,8 +178,10 @@ def plot(result: dict):
         ax.set_ylabel(ylabel)
     f4 = DATA / "f4.json"
     handles = [Line2D([], [], color=color, marker="o", markersize=4, label=label) for _, color, label in MODELS]
+    f4_peak = None
     if f4.exists():  # the curve this control is for
         kv = json.loads(f4.read_text())["kv"]
+        f4_peak = kv["x"][int(np.argmax(kv["R"]))]
         axes[0].plot(kv["x"], kv["R"], color=GRAY, linewidth=2, linestyle=":")
         handles.append(Line2D([], [], color=GRAY, linewidth=2, linestyle=":", label="F4 (b): fine-tuned KV into base"))
     handles += [Line2D([], [], color="black", linestyle="-", label="donor: same task, other episode"),
@@ -187,10 +189,14 @@ def plot(result: dict):
     axes[0].legend(handles=handles, loc="upper left", fontsize=10)
     restore = {name: np.array(result["kinds"]["scene"][name]["restore"]["share"]) for name, _, _ in MODELS}
     peaks = {name: x[int(np.argmax(values))] for name, values in restore.items()}
-    where = (f"layer {peaks['base']}" if peaks["base"] == peaks["ft"]
-             else f"layers {peaks['base']} (base) and {peaks['ft']} (fine-tuned)")
-    axes[0].set_title(f"With the wrong scene in every other layer, the keys and values of {where} alone give back "
-                      f"{restore['base'].max():.0%} (base) and {restore['ft'].max():.0%} (fine-tuned) of the actions")
+    shares = f"{restore['base'].max():.0%} (base) and {restore['ft'].max():.0%} (fine-tuned)"
+    if peaks["base"] == peaks["ft"] == f4_peak:
+        title = (f"Both models read the scene mainly through layer {f4_peak}'s keys and values ({shares} restored "
+                 "by that layer alone): F4's peak is where the action expert reads")
+    else:
+        title = (f"Restoring one layer's keys and values gives back at most {shares} of the actions, at layers "
+                 f"{peaks['base']} and {peaks['ft']}" + (f"; F4 peaks at layer {f4_peak}" if f4_peak else ""))
+    axes[0].set_title(title)
     scene, task = result["kinds"]["scene"]["states"], result["kinds"]["task"]["states"]
     save_figure(fig, "F4b", "Control for F4, inside one model at a time: a state's prefix keys and values are "
                 f"exchanged with those of another state with the same prefix mask ({scene} LIBERO training states "

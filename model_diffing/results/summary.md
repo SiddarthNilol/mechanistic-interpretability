@@ -10,6 +10,8 @@ Three things to take away, each a pilot result:
 1. The action change of fine-tuning is carried mostly by what the backbone writes for the action
    expert, and is concentrated in the keys and values of backbone layers 15 and 16 (F3, F4).
    The weights, in contrast, moved almost uniformly everywhere (F2).
+   A control (F4b) shows that layers 15 and 16 are where the action expert reads the scene in
+   both models, so the peak locates the reading point, not the place fine-tuning changed.
 2. Task progress is decodable (R^2 about 0.8), but already from the token embeddings before any
    backbone layer, so the probe may be reading the images, not a computed progress signal (F5).
 3. H3 is not supported: the progress direction is more readable by the action expert than a
@@ -84,9 +86,39 @@ recomputes them from the weights and writes `results/data/f1_table.md`.)
   about 5% to 10% in the first layers to 66% after layer 14, then drops (28%, 12%, 4% after
   layers 15, 16, 17), because a later patch reaches fewer layers' keys and values.
 - Does not show: single-layer KV patches do not add up to the whole (the layers interact), so a
-  flat, low curve does not mean the prefix is unimportant. Sufficiency direction only.
+  flat, low curve does not mean the prefix is unimportant. Sufficiency direction only. And the peak
+  at layers 15 and 16 is not specific to fine-tuning: see the control F4b below.
 - Previews: path-level patching (which layers' KV, read by which expert layers) in the full
   experiment, and the comparison with "Not All Layers Need Tuning".
+
+## F4b. Control for F4: which layers the action expert relies on
+
+- Shows: inside one model, with the keys and values of a different state (the wrong scene) at
+  every layer, putting back the state's own keys and values at one layer restores the model's
+  own actions by this share (240 states, donor from the same task, 95% intervals):
+
+  | layer | pi05_base | pi05_libero | F4 (b), fine-tuned KV into base |
+  |---|---|---|---|
+  | 13 | 0.14 | 0.04 | 0.15 |
+  | 15 | 0.47 [0.41, 0.53] | 0.24 [0.21, 0.26] | 0.46 |
+  | 16 | 0.18 [0.11, 0.25] | 0.20 [0.15, 0.25] | 0.27 |
+  | all others | 0.07 or less | 0.02 or less | 0.11 or less |
+
+  Scrambling one layer gives the same picture (layers 15 and 16 do 32% and 22% of the full
+  damage in the base model, 12% and 20% in the fine-tuned one). Donors from a different task
+  give nearly the same curves (228 states). So the action expert reads the scene mainly through
+  layers 15 and 16 in both models, and the base model's profile is almost the F4 curve. F4's
+  peak therefore shows where the action expert reads, not where fine-tuning acted. This is not
+  wired in: expert layer l can read backbone layer l at all 18 layers. A second observation: a
+  wrong scene changes the fine-tuned model's actions about 9 times more than the base model's
+  (squared error 0.50 against 0.06), so in this input format the base model's actions depend
+  only weakly on the scene.
+- Does not show: where in the weights fine-tuning made its change. The fine-tuned information
+  that arrives at layers 15 and 16 can have been computed anywhere before (the residual curve of
+  F4 rises steadily from layer 5 to 14). In the fine-tuned model single layers restore less
+  (they sum to 0.6, against 1.1 in the base model), so there the layers work together more.
+- Previews: path-level patching in the full project needs a baseline of this kind for every
+  component, so that "where fine-tuning acts" is not confused with "what the model reads anyway".
 
 ## F5. Progress probe by layer
 
