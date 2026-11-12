@@ -195,3 +195,32 @@ Every script appends its run below (command, checkpoints, seed, states, wall tim
 - probes: 16
 - batch size: 4
 - wall time: 59.1 min
+
+### check_pair (sanity check), 2026-11-11 22:09
+
+- command: `python src/check_pair.py --real`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22775605
+- seed: 0
+- states: 4
+- ours vs openpi, KV cache: 0.00e+00 (max abs difference, float32)
+- ours vs openpi, action chunk: 0.00e+00 (max abs difference, float32)
+- self-patch, residual, worst layer: 0.00e+00 (max abs difference, float32)
+- self-patch, KV, worst layer: 0.00e+00 (max abs difference, float32)
+- adding a zero vector, worst layer: 0.00e+00 (max abs difference, float32)
+- cross-model patch, smallest effect over layers: 5.63e-02 (max abs difference, float32)
+- wall time: 2.1 min
+
+### F4b (per-layer reliance control), 2026-11-11 22:19
+
+- command: `python src/f4b_layer_reliance.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22775605
+- seed: 0
+- states: 240
+- states with same task donor: 240
+- states with other task donor: 228
+- batch size: 8
+- wall time: 10.0 min
