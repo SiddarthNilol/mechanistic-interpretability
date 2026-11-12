@@ -27,8 +27,8 @@ from openpi.models import model as _model
 from openpi.models import pi0_config
 from openpi.models.pi0 import make_attn_mask
 
-import pair as P
-from common import REAL_DIMS, SEED, log_run
+import model_diffing.archive.src.pair as P
+from model_diffing.archive.src.common import REAL_DIMS, SEED, log_run
 
 TOLERANCE = 1e-5  # CLAUDE.md: self-patching must reproduce the actions to this, in float32
 
@@ -143,7 +143,7 @@ def main():
     started = time.time()
 
     if args.real:
-        import states as S
+        import model_diffing.archive.src.states as S
 
         pair = P.Pair.load()
         inputs = S.Inputs(S.load_states(patch_only=True)[: args.states])

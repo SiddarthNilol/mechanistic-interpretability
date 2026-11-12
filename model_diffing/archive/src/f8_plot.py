@@ -12,7 +12,7 @@ import json
 
 import numpy as np
 
-from common import DATA, GRAY, bootstrap_ci, save_figure, style
+from model_diffing.archive.src.common import DATA, GRAY, bootstrap_ci, save_figure, style
 
 COLORS = {"progress": "#DD8452", "progress_readable": "#C44E52", "random": GRAY}
 LABELS = {"progress": "progress direction", "progress_readable": "its readable part (P$_k$v, same norm)",

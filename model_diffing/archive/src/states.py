@@ -18,7 +18,7 @@ import json
 
 import numpy as np
 
-from common import SEED, STATES_FILE
+from model_diffing.archive.src.common import SEED, STATES_FILE
 
 DATASET = "physical-intelligence/libero"
 SUITES = ("libero_10", "libero_goal", "libero_object", "libero_spatial")  # task_index // 10
@@ -50,7 +50,7 @@ def transforms():
     from openpi.shared import normalize
     from openpi.training import config as _config
 
-    import pair as P
+    import model_diffing.archive.src.pair as P
 
     train = _config.get_config(P.CONFIG_NAME)
     data = train.data.create(train.assets_dirs, train.model)
@@ -114,7 +114,7 @@ class Inputs:
         state's id only, so every script and both models get the same one."""
         import jax
 
-        import pair as P
+        import model_diffing.archive.src.pair as P
 
         if self.action_shape is None:
             config = P.model_config()

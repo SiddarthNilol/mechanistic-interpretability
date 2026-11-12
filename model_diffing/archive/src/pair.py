@@ -38,7 +38,7 @@ from openpi.models import gemma
 from openpi.models import model as _model
 from openpi.models.pi0 import make_attn_mask
 
-from common import NUM_STEPS
+from model_diffing.archive.src.common import NUM_STEPS
 
 # Full float32 matrix products. On GPUs JAX otherwise uses TF32 (about 3 significant digits).
 jax.config.update("jax_default_matmul_precision", "highest")

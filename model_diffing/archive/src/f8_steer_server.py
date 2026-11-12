@@ -36,9 +36,9 @@ from openpi.models import model as _model
 from openpi.serving import websocket_policy_server
 from openpi_client import base_policy
 
-import pair as P
-import states as S
-from common import DATA, SEED
+import model_diffing.archive.src.pair as P
+import model_diffing.archive.src.states as S
+from model_diffing.archive.src.common import DATA, SEED
 
 
 def unit(v: np.ndarray) -> np.ndarray:

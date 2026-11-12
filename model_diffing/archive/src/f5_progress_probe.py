@@ -29,7 +29,7 @@ import time
 
 import numpy as np
 
-from common import BASE_COLOR, DATA, FT_COLOR, GRAY, SEED, log_run, save_figure, style
+from model_diffing.archive.src.common import BASE_COLOR, DATA, FT_COLOR, GRAY, SEED, log_run, save_figure, style
 
 ALPHAS = np.logspace(0, 6, 7)  # ridge strengths tried (features are standardized)
 FOLDS = 5
@@ -38,8 +38,8 @@ FOLDS = 5
 def extract(args):
     import jax.numpy as jnp
 
-    import pair as P
-    import states as S
+    import model_diffing.archive.src.pair as P
+    import model_diffing.archive.src.states as S
 
     pair = P.Pair.load()
     states = S.load_states()[: args.limit]

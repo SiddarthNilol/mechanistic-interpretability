@@ -38,7 +38,7 @@ import time
 
 import numpy as np
 
-from common import BASE_COLOR, DATA, FT_COLOR, GRAY, REAL_DIMS, SEED, bootstrap_ci, log_run, save_figure, style
+from model_diffing.archive.src.common import BASE_COLOR, DATA, FT_COLOR, GRAY, REAL_DIMS, SEED, bootstrap_ci, log_run, save_figure, style
 
 KINDS = ("scene", "task")
 MODELS = (("base", BASE_COLOR, "pi05_base"), ("ft", FT_COLOR, "pi05_libero"))
@@ -67,7 +67,7 @@ def reliance(models, obs, donor, noise):
     import jax
     import jax.numpy as jnp
 
-    import pair as P
+    import model_diffing.archive.src.pair as P
 
     obs, donor = P.preprocess(obs), P.preprocess(donor)
     out = {}
@@ -95,8 +95,8 @@ def compute(args) -> dict:
     import jax.numpy as jnp
     from openpi.models import model as _model
 
-    import pair as P
-    import states as S
+    import model_diffing.archive.src.pair as P
+    import model_diffing.archive.src.states as S
 
     pair = P.Pair.load()
     states = S.load_states(patch_only=True)[: args.limit]

@@ -27,12 +27,12 @@ import time
 import jax
 import numpy as np
 
-from common import BASE_COLOR, DATA, FT_COLOR, REAL_DIMS, SEED, bootstrap_ci, log_run, save_figure, style
+from model_diffing.archive.src.common import BASE_COLOR, DATA, FT_COLOR, REAL_DIMS, SEED, bootstrap_ci, log_run, save_figure, style
 
 
 def compute(args) -> dict:
-    import pair as P
-    import states as S
+    import model_diffing.archive.src.pair as P
+    import model_diffing.archive.src.states as S
 
     pair = P.Pair.load()
     depth = pair.depth

@@ -25,7 +25,7 @@ import time
 
 import numpy as np
 
-from common import DATA, GRAY, SEED, log_run, save_figure, style
+from model_diffing.archive.src.common import DATA, GRAY, SEED, log_run, save_figure, style
 
 MODULES = ("vision encoder", "language backbone", "action expert", "other")
 
@@ -89,7 +89,7 @@ def analyse(base: dict, ft: dict) -> dict:
 
 def write_table(result: dict):
     """The table for summary.md: layers, heads, width, prefix tokens per observation."""
-    from pair import model_config
+    from model_diffing.archive.src.pair import model_config
 
     config = model_config()
     arch = result["architecture"]
@@ -171,7 +171,7 @@ def main():
     if not args.plot_only:
         from flax import traverse_util
 
-        from pair import load_params
+        from model_diffing.archive.src.pair import load_params
 
         base, ft = (traverse_util.flatten_dict(load_params(name, on_cpu=True)) for name in ("base", "ft"))
         if base.keys() != ft.keys() or any(base[k].shape != ft[k].shape for k in base):

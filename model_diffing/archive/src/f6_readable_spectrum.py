@@ -38,7 +38,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from common import DATA, REAL_DIMS, SEED, log_run, save_figure, style
+from model_diffing.archive.src.common import DATA, REAL_DIMS, SEED, log_run, save_figure, style
 
 LAYERS = (3, 9, 15)  # residual after this many layers
 FLOW_STEPS = (0, 5, 9)  # of the 10 flow steps: flow times 1.0, 0.5, 0.1
@@ -47,8 +47,8 @@ GRAY_LINE = "#555555"
 
 
 def compute(args):
-    import pair as P
-    import states as S
+    import model_diffing.archive.src.pair as P
+    import model_diffing.archive.src.states as S
 
     pair = P.Pair.load(names=(args.model,))  # only the model whose Jacobian is taken
     states = S.load_states(patch_only=True)[:: args.every][: args.limit]

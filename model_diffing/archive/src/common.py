@@ -91,7 +91,7 @@ def openpi_source() -> str:
 
 def log_run(name: str, started: float, **fields):
     """Appends one run to results/run_log.md: command, checkpoints, seed, number of states, wall time."""
-    from pair import CHECKPOINTS  # here, so plotting-only scripts need no JAX
+    from model_diffing.archive.src.pair import CHECKPOINTS  # here, so plotting-only scripts need no JAX
 
     RESULTS.mkdir(parents=True, exist_ok=True)
     lines = [

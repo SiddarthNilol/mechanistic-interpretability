@@ -25,8 +25,8 @@ import json
 
 import numpy as np
 
-from common import DATA, GRAY, SEED, save_figure, style
-from f6_readable_spectrum import LAYERS
+from model_diffing.archive.src.common import DATA, GRAY, SEED, save_figure, style
+from model_diffing.archive.src.f6_readable_spectrum import LAYERS
 
 N_RANDOM = 100
 

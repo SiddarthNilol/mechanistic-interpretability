@@ -21,8 +21,8 @@ import os
 
 import numpy as np
 
-from common import RESULTS, SEED, STATES_FILE
-from states import DATASET, SUITES, dataset_file, episode_file
+from model_diffing.archive.src.common import RESULTS, SEED, STATES_FILE
+from model_diffing.archive.src.states import DATASET, SUITES, dataset_file, episode_file
 
 
 def sample_states(seed: int, episodes_per_task: int, frames: int, patch_frames: int) -> dict:
@@ -94,7 +94,7 @@ def main():
     from openpi.models.tokenizer import PaligemmaTokenizer
     from openpi.shared import download
 
-    import pair as P
+    import model_diffing.archive.src.pair as P
 
     logging.basicConfig(level=logging.INFO, force=True)  # openpi reports its downloads through logging
     cache = os.environ.get("OPENPI_DATA_HOME", "~/.cache/openpi")
