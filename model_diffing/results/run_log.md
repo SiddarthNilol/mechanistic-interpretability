@@ -104,3 +104,65 @@ Every script appends its run below (command, checkpoints, seed, states, wall tim
 - seed: 0 (not used: no sampling)
 - states: 0 (weights only)
 - wall time: 2.9 min
+
+### check_pair (sanity check), 2026-11-11 18:25
+
+- command: `python src/check_pair.py --real`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22749249
+- seed: 0
+- states: 4
+- ours vs openpi, KV cache: 0.00e+00 (max abs difference, float32)
+- ours vs openpi, action chunk: 0.00e+00 (max abs difference, float32)
+- self-patch, residual, worst layer: 0.00e+00 (max abs difference, float32)
+- self-patch, KV, worst layer: 0.00e+00 (max abs difference, float32)
+- adding a zero vector, worst layer: 0.00e+00 (max abs difference, float32)
+- cross-model patch, smallest effect over layers: 5.63e-02 (max abs difference, float32)
+- wall time: 2.0 min
+
+### F3 (module-level patching), 2026-11-11 18:28
+
+- command: `python src/f3_module_patching.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22749249
+- seed: 0
+- states: 240
+- batch size: 8
+- wall time: 3.0 min
+
+### F4 (layer-level patching), 2026-11-11 18:37
+
+- command: `python src/f4_layer_patching.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22749249
+- seed: 0
+- states: 240
+- batch size: 8
+- wall time: 9.5 min
+
+### F5 (progress probe), 2026-11-11 18:44
+
+- command: `python src/f5_progress_probe.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22749249
+- seed: 0
+- states: 960
+- batch size: 16
+- wall time: 6.8 min
+
+### F6 (action-readable spectrum), 2026-11-11 18:56
+
+- command: `python src/f6_readable_spectrum.py`
+- checkpoints: base `gs://openpi-assets/checkpoints/pi05_base`, fine-tuned `gs://openpi-assets/checkpoints/pi05_libero`
+- openpi: `aec5d4d9effe4206d5a92606ab9343a0436fbd24` at `/scratch/sk12590/lair-openpi`
+- SLURM job: 22749249
+- seed: 0
+- states: 120
+- model: ft
+- probes: 4
+- batch size: 4
+- wall time: 11.6 min

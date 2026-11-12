@@ -1,0 +1,94 @@
+{
+ "states": 240,
+ "L_base_mean": 0.4861949384212494,
+ "bars": {
+  "sufficiency: vision tokens": {
+   "R": 0.09438163042068481,
+   "ci": [
+    0.02880464941263199,
+    0.15348452627658843
+   ],
+   "mixture": "ft/base/base",
+   "fraction_of_states_worse_than_base": 0.375
+  },
+  "necessity: vision tokens": {
+   "R": 0.25007525086402893,
+   "ci": [
+    0.2090591609477997,
+    0.29503628984093666
+   ],
+   "mixture": "base/ft/ft",
+   "fraction_of_states_worse_than_base": 0.1125
+  },
+  "sufficiency: prefix KV\n(vision + backbone)": {
+   "R": 0.7486931383609772,
+   "ci": [
+    0.6954719871282578,
+    0.7901750102639198
+   ],
+   "mixture": "ft/ft/base",
+   "fraction_of_states_worse_than_base": 0.03333333333333333
+  },
+  "necessity: prefix KV\n(vision + backbone)": {
+   "R": 0.4949037730693817,
+   "ci": [
+    0.44433483481407166,
+    0.5523259237408636
+   ],
+   "mixture": "base/base/ft",
+   "fraction_of_states_worse_than_base": 0.13333333333333333
+  },
+  "sufficiency: action expert": {
+   "R": 0.5050962269306183,
+   "ci": [
+    0.4476740762591362,
+    0.5556651651859283
+   ],
+   "mixture": "base/base/ft",
+   "fraction_of_states_worse_than_base": 0.13333333333333333
+  },
+  "necessity: action expert": {
+   "R": 0.2513068616390228,
+   "ci": [
+    0.20982498973608016,
+    0.3045280128717422
+   ],
+   "mixture": "ft/ft/base",
+   "fraction_of_states_worse_than_base": 0.03333333333333333
+  }
+ },
+ "all_mixtures": {
+  "base/base/base": {
+   "L_mean": 0.4861949384212494,
+   "L_over_L_base": 1.0
+  },
+  "base/base/ft": {
+   "L_mean": 0.2406197041273117,
+   "L_over_L_base": 0.4949037730693817
+  },
+  "base/ft/base": {
+   "L_mean": 0.19816096127033234,
+   "L_over_L_base": 0.4075751304626465
+  },
+  "base/ft/ft": {
+   "L_mean": 0.12158532440662384,
+   "L_over_L_base": 0.25007525086402893
+  },
+  "ft/base/base": {
+   "L_mean": 0.440307080745697,
+   "L_over_L_base": 0.9056183695793152
+  },
+  "ft/base/ft": {
+   "L_mean": 0.19671855866909027,
+   "L_over_L_base": 0.4046083986759186
+  },
+  "ft/ft/base": {
+   "L_mean": 0.12218412756919861,
+   "L_over_L_base": 0.2513068616390228
+  },
+  "ft/ft/ft": {
+   "L_mean": 0.0,
+   "L_over_L_base": 0.0
+  }
+ }
+}
