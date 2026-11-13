@@ -3,7 +3,5 @@ __pycache__/
 *.log
 # LIBERO source, cloned at a pinned commit by jobs/setup_libero.sh
 third_party/
-# large arrays; small json files next to them are committed
-results/data/*.npz
-# simulator probe images (Module 1)
-results/probe/
+# arrays (data, saved policy requests); images, json and text results are committed
+*.npz
