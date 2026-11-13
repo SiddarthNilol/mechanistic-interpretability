@@ -22,7 +22,7 @@ if [ ! -d "$LIBERO/.git" ]; then
 fi
 git -C "$LIBERO" checkout -q "$COMMIT"
 
-uv venv --python 3.8 "$VENV"
+uv venv --clear --python 3.8 "$VENV"  # replaces a half-built one from an earlier failed run
 source "$VENV/bin/activate"
 # evdev (keyboard input, pulled in by robosuite -> pynput for teleoperation, which we never use)
 # does not build on Torch: no kernel headers. `uv pip sync` installs exactly the listed packages,
