@@ -8,6 +8,7 @@
 # commit lair-openpi pins as its submodule, the venv in $SCRATCH/libero-venv, and LIBERO's own
 # config in $SCRATCH/.cache/libero (instead of ~/.libero).
 set -euo pipefail
+export UV_HTTP_TIMEOUT=${UV_HTTP_TIMEOUT:-300}  # the torch 1.11 wheels are large
 : "${SCRATCH:?SCRATCH is not set; expected /scratch/<netid>}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/jobs/caches.sh"
@@ -23,7 +24,12 @@ git -C "$LIBERO" checkout -q "$COMMIT"
 
 uv venv --python 3.8 "$VENV"
 source "$VENV/bin/activate"
-uv pip sync "$OPENPI/examples/libero/requirements.txt" "$LIBERO/requirements.txt" \
+# evdev (keyboard input, pulled in by robosuite -> pynput for teleoperation, which we never use)
+# does not build on Torch: no kernel headers. `uv pip sync` installs exactly the listed packages,
+# so dropping its line leaves pynput installed without it.
+REQS=$SCRATCH/.cache/libero-requirements.txt
+grep -v '^evdev==' "$OPENPI/examples/libero/requirements.txt" > "$REQS"
+uv pip sync "$REQS" "$LIBERO/requirements.txt" \
     --extra-index-url https://download.pytorch.org/whl/cu113 --index-strategy=unsafe-best-match
 uv pip install -e "$OPENPI/packages/openpi-client"
 uv pip install -e "$LIBERO"
