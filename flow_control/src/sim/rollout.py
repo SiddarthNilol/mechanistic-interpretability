@@ -60,7 +60,10 @@ def _env(task_index: int):
     return _worker["envs"][task_index]
 
 
-def episode(job: tuple) -> dict:
+def episode(job: tuple, record: bool = False) -> dict:
+    """One episode. With record=True the result also has "frames": the front camera image at
+    every step (256 x 256, rotated as the policy sees it) and "frame_commands": the command
+    active at that step (src/sim/demo.py makes videos from them)."""
     task_index, state_index, condition, stream = job
     task = L.TASKS[task_index]
     env, instruction, initial_states = _env(task_index)
@@ -70,6 +73,7 @@ def episode(job: tuple) -> dict:
     plan: collections.deque = collections.deque()
     replan, done, held_ever = 0, False, False
     commands = []
+    frames, frame_commands = [], []
     for step in range(L.MAX_STEPS):
         if not plan:
             s = L.state(env, obs, task)
@@ -82,14 +86,23 @@ def episode(job: tuple) -> dict:
             chunk = np.asarray(client.infer(request)["actions"])
             plan.extend(chunk[:REPLAN])
             replan += 1
+        if record:
+            frames.append(np.ascontiguousarray(obs["agentview_image"][::-1, ::-1]))
+            frame_commands.append(commands[-1])
         obs, _, done, _ = env.step(plan.popleft().tolist())
         if done:
             break
-    return {
+    if record:
+        frames.append(np.ascontiguousarray(obs["agentview_image"][::-1, ::-1]))
+        frame_commands.append(commands[-1])
+    result = {
         "task": task_index, "state": state_index, "condition": condition, "stream": stream,
         "success": bool(done), "steps": step + 1, "replans": replan, "held_ever": bool(held_ever),
         "commands": commands, "seconds": round(time.time() - started, 1),
     }
+    if record:
+        result.update(frames=frames, frame_commands=frame_commands)
+    return result
 
 
 def parse_range(text: str) -> list[int]:

@@ -9,9 +9,10 @@
 #SBATCH --output=%x_%j.log
 # Closed-loop rollouts on one GPU node: the policy server (openpi env, GPU) in the background,
 # and the simulator workers (LIBERO env, CPUs, EGL rendering on the same GPU) in front.
-# Submit from flow_control; everything after the script name goes to src/sim/rollout.py:
+# Submit from flow_control with the simulator-side script and its arguments:
 #
-#   sbatch jobs/rollout_job.sh --out results/data/stage1.jsonl --states 0-49 --workers 12
+#   sbatch jobs/rollout_job.sh src/sim/rollout.py --out results/data/stage1.jsonl --workers 12
+#   sbatch jobs/rollout_job.sh src/sim/demo.py --pairs 3
 set -euo pipefail
 nvidia-smi -L
 PORT=$((8000 + SLURM_JOB_ID % 1000))
@@ -26,4 +27,4 @@ for _ in $(seq 1 120); do  # the checkpoint loads and compiles in a few minutes
 done
 echo "server up on port $PORT"
 
-( source jobs/sim_env.sh && python src/sim/rollout.py --port "$PORT" "$@" )
+( source jobs/sim_env.sh && python "$@" --port "$PORT" )
