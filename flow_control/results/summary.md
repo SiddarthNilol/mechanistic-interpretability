@@ -16,8 +16,8 @@ simulator state.
 - Shows: the gate passes. Steering raises success on both tasks, in the paper's direction and by a
   similar amount (+15 and +24 episodes against the paper's +10 and +20). In no pair did the
   unsteered episode succeed and the steered one fail. Our unsteered rates are within 3 episodes of
-  the paper's. Every failure in both conditions is a timeout (400 steps), and in 37 of 39
-  unsteered failures and all 15 steered failures the bowl was never held at a replan, so the
+  the paper's. Every failure in both conditions is a timeout (400 steps), and in 48 of 54
+  unsteered failures and 14 of 15 steered failures the bowl was never held at a replan, so the
   failures are mostly failed or missing grasps. Steering made task 60 slower: successful steered
   episodes took 229 steps on average against 124 unsteered.
 - Does not show: that the remaining 15 failures on task 12 cannot be fixed (the controller never
