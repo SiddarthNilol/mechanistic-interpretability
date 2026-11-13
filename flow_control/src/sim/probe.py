@@ -5,7 +5,7 @@
 For both tasks, on initial state 0:
   1. builds the env, checks the task name, prints the observation keys and the object names;
   2. prints the privileged state (end effector, target, goal, held) and saves both camera
-     images, rotated as the policy sees them, to results/probe/;
+     images, rotated as the policy sees them, and the whole policy request to results/probe/;
   3. moves the gripper to the target with a hand-written script (open, go above, descend,
      close, lift) and reports whether is_held turns True and the object rises with the hand;
   4. opens the gripper while lifted (the Stage 2 "drop") and reports that held turns False and
@@ -52,6 +52,7 @@ def probe(task_index: int):
     for key in ("observation/image", "observation/wrist_image"):
         Image.fromarray(request[key]).save(OUT / f"task{task_index}_{key.split('/')[1]}.png")
     print("policy input:", {k: (v.shape, v.dtype) if hasattr(v, "shape") else v for k, v in request.items()})
+    np.savez(OUT / f"task{task_index}_request.npz", **request)  # for src/policy/check_server.py
 
     # 3. grasp by script
     target = s["target"]
