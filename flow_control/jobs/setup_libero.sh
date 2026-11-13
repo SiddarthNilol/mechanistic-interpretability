@@ -37,5 +37,6 @@ uv pip install -e "$LIBERO"
 # LIBERO asks on first import where to keep its data; answer "N" (use the defaults inside the
 # source tree) once, with the config file under scratch.
 export LIBERO_CONFIG_PATH=$SCRATCH/.cache/libero
+export PYTHONPATH="$LIBERO${PYTHONPATH:+:$PYTHONPATH}"  # as openpi's README: LIBERO's editable install is not importable on its own
 echo N | python -c "from libero.libero import benchmark; print('LIBERO tasks in libero_90:', benchmark.get_benchmark_dict()['libero_90']().n_tasks)"
 echo "done: source jobs/sim_env.sh to use it"
