@@ -1,0 +1,51 @@
+[
+ {
+  "task": 12,
+  "state": 2,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ },
+ {
+  "task": 12,
+  "state": 5,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ },
+ {
+  "task": 12,
+  "state": 10,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ },
+ {
+  "task": 12,
+  "state": 3,
+  "why": "both failed in Stage 1",
+  "unsteered": false,
+  "steered": false
+ },
+ {
+  "task": 60,
+  "state": 1,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ },
+ {
+  "task": 60,
+  "state": 4,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ },
+ {
+  "task": 60,
+  "state": 6,
+  "why": "steering rescued it in Stage 1",
+  "unsteered": false,
+  "steered": true
+ }
+]
