@@ -1,0 +1,25 @@
+GPU 0: NVIDIA H100 80GB HBM3 (UUID: GPU-63c93681-fbf7-2045-dae5-c016e5bb87e2)
+
+== task 12: 'put the black bowl at the back on the plate', 50 initial states
+observation keys: ['agentview_image', 'akita_black_bowl_1_pos', 'akita_black_bowl_1_quat', 'akita_black_bowl_1_to_robot0_eef_pos', 'akita_black_bowl_1_to_robot0_eef_quat', 'akita_black_bowl_2_pos', 'akita_black_bowl_2_quat', 'akita_black_bowl_2_to_robot0_eef_pos', 'akita_black_bowl_2_to_robot0_eef_quat', 'akita_black_bowl_3_pos', 'akita_black_bowl_3_quat', 'akita_black_bowl_3_to_robot0_eef_pos', 'akita_black_bowl_3_to_robot0_eef_quat', 'object-state', 'plate_1_pos', 'plate_1_quat', 'plate_1_to_robot0_eef_pos', 'plate_1_to_robot0_eef_quat', 'robot0_eef_pos', 'robot0_eef_quat', 'robot0_eye_in_hand_image', 'robot0_gripper_qpos', 'robot0_gripper_qvel', 'robot0_joint_pos', 'robot0_joint_pos_cos', 'robot0_joint_pos_sin', 'robot0_joint_vel', 'robot0_proprio-state']
+objects: ['akita_black_bowl_1', 'akita_black_bowl_2', 'akita_black_bowl_3', 'plate_1']
+state: {'eef': [-0.208, -0.005, 1.166], 'gripper': [0.039, -0.039], 'target': [-0.165, 0.046, 0.898], 'goal': [-0.018, -0.012, 0.902], 'held': False}
+policy input: {'observation/image': ((224, 224, 3), dtype('uint8')), 'observation/wrist_image': ((224, 224, 3), dtype('uint8')), 'observation/state': ((8,), dtype('float32')), 'prompt': 'put the black bowl at the back on the plate'}
+action +x for 5 steps moves the end effector by [4.39, 0.02, -0.94] cm (world x, y, z)
+action +y for 5 steps moves the end effector by [-0.12, 5.4, -0.03] cm (world x, y, z)
+action +z for 5 steps moves the end effector by [-0.41, 0.0, 5.44] cm (world x, y, z)
+grasp: held = False, target rose -0.3 cm (gripper qpos [0.001, -0.0])
+drop: held = False, target z 89.8 cm (was 89.8 cm)
+shift by 5 cm in x: moved [3.7, 1.1, 0.0] cm, success = False
+
+== task 60: 'pick up the black bowl on the left and put it in the tray', 50 initial states
+observation keys: ['agentview_image', 'akita_black_bowl_1_pos', 'akita_black_bowl_1_quat', 'akita_black_bowl_1_to_robot0_eef_pos', 'akita_black_bowl_1_to_robot0_eef_quat', 'akita_black_bowl_2_pos', 'akita_black_bowl_2_quat', 'akita_black_bowl_2_to_robot0_eef_pos', 'akita_black_bowl_2_to_robot0_eef_quat', 'chocolate_pudding_1_pos', 'chocolate_pudding_1_quat', 'chocolate_pudding_1_to_robot0_eef_pos', 'chocolate_pudding_1_to_robot0_eef_quat', 'new_salad_dressing_1_pos', 'new_salad_dressing_1_quat', 'new_salad_dressing_1_to_robot0_eef_pos', 'new_salad_dressing_1_to_robot0_eef_quat', 'object-state', 'robot0_eef_pos', 'robot0_eef_quat', 'robot0_eye_in_hand_image', 'robot0_gripper_qpos', 'robot0_gripper_qvel', 'robot0_joint_pos', 'robot0_joint_pos_cos', 'robot0_joint_pos_sin', 'robot0_joint_vel', 'robot0_proprio-state', 'wooden_tray_1_pos', 'wooden_tray_1_quat', 'wooden_tray_1_to_robot0_eef_pos', 'wooden_tray_1_to_robot0_eef_quat']
+objects: ['akita_black_bowl_1', 'akita_black_bowl_2', 'chocolate_pudding_1', 'new_salad_dressing_1', 'wooden_tray_1']
+state: {'eef': [-0.054, 0.004, 0.683], 'gripper': [0.039, -0.039], 'target': [-0.095, -0.127, 0.435], 'goal': [0.009, 0.252, 0.437], 'held': False}
+policy input: {'observation/image': ((224, 224, 3), dtype('uint8')), 'observation/wrist_image': ((224, 224, 3), dtype('uint8')), 'observation/state': ((8,), dtype('float32')), 'prompt': 'pick up the black bowl on the left and put it in the tray'}
+action +x for 5 steps moves the end effector by [4.39, -0.01, -0.96] cm (world x, y, z)
+action +y for 5 steps moves the end effector by [-0.16, 5.39, -0.06] cm (world x, y, z)
+action +z for 5 steps moves the end effector by [-0.43, -0.01, 5.42] cm (world x, y, z)
+grasp: held = False, target rose -0.4 cm (gripper qpos [0.001, -0.0])
+drop: held = False, target z 43.5 cm (was 43.5 cm)
+shift by 5 cm in x: moved [5.0, 0.0, 0.0] cm, success = False
