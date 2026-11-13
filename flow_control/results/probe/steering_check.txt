@@ -1,0 +1,19 @@
+GPU 0: NVIDIA H200 (UUID: GPU-e10a3e9f-79e6-0c30-349a-295c628d709a)
+
+task12_request.npz: 'put the black bowl at the back on the plate'
+  unsteered: dx +0.403  dy +0.159  dz -0.026   (s.d. over 8 seeds 0.038 0.024 0.010)
+         +x: dx +0.577  dy +0.209  dz -0.027   (s.d. over 8 seeds 0.016 0.016 0.008)
+         -x: dx +0.243  dy +0.096  dz -0.024   (s.d. over 8 seeds 0.014 0.017 0.005)
+         +y: dx +0.459  dy +0.298  dz -0.029   (s.d. over 8 seeds 0.014 0.020 0.007)
+         -y: dx +0.364  dy +0.047  dz -0.022   (s.d. over 8 seeds 0.017 0.011 0.006)
+         +z: dx +0.403  dy +0.144  dz -0.004   (s.d. over 8 seeds 0.015 0.019 0.004)
+         -z: dx +0.416  dy +0.169  dz -0.061   (s.d. over 8 seeds 0.017 0.017 0.013)
+
+task60_request.npz: 'pick up the black bowl on the left and put it in the tray'
+  unsteered: dx +0.128  dy -0.031  dz +0.002   (s.d. over 8 seeds 0.024 0.009 0.004)
+         +x: dx +0.238  dy -0.033  dz +0.010   (s.d. over 8 seeds 0.011 0.008 0.002)
+         -x: dx +0.047  dy -0.029  dz -0.004   (s.d. over 8 seeds 0.007 0.007 0.002)
+         +y: dx +0.131  dy +0.003  dz +0.003   (s.d. over 8 seeds 0.009 0.005 0.002)
+         -y: dx +0.141  dy -0.116  dz +0.005   (s.d. over 8 seeds 0.010 0.016 0.002)
+         +z: dx +0.139  dy -0.033  dz +0.013   (s.d. over 8 seeds 0.009 0.009 0.003)
+         -z: dx +0.130  dy -0.029  dz -0.015   (s.d. over 8 seeds 0.009 0.007 0.003)
