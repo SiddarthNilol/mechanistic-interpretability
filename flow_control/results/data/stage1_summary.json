@@ -1,0 +1,42 @@
+{
+ "12": {
+  "pairs": 50,
+  "unsteered": 20,
+  "steered": 35,
+  "unsteered_ci": [
+   0.27608389644428605,
+   0.5381856235914368
+  ],
+  "steered_ci": [
+   0.5624964942316114,
+   0.8089644656969429
+  ],
+  "only_steered_succeeded": 15,
+  "only_unsteered_succeeded": 0,
+  "mcnemar_p": 6.103515625e-05,
+  "paper": {
+   "unsteered": 23,
+   "steered": 33
+  }
+ },
+ "60": {
+  "pairs": 50,
+  "unsteered": 26,
+  "steered": 50,
+  "unsteered_ci": [
+   0.38511744790185476,
+   0.6520286480910008
+  ],
+  "steered_ci": [
+   0.9286523998213857,
+   0.9999999999999999
+  ],
+  "only_steered_succeeded": 24,
+  "only_unsteered_succeeded": 0,
+  "mcnemar_p": 1.1920928955078125e-07,
+  "paper": {
+   "unsteered": 27,
+   "steered": 47
+  }
+ }
+}

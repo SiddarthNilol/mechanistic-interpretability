@@ -81,7 +81,7 @@ def plot(summary: dict):
             lo, hi = s[f"{cond}_ci"]
             x = i + (j - 0.5) * 2 * width
             ax.bar(x - width / 2, ours, width, color=COLORS[cond], label=f"{cond}, ours" if i == 0 else None)
-            ax.errorbar(x - width / 2, ours, yerr=[[ours - lo], [hi - ours]], color="black", capsize=4)
+            ax.errorbar(x - width / 2, ours, yerr=[[max(0.0, ours - lo)], [max(0.0, hi - ours)]], color="black", capsize=4)
             ax.text(x - width / 2, hi + 0.02, f"{s[cond]}/{n}", ha="center", fontsize=11)
             if s["paper"]:
                 paper = s["paper"][cond] / 50

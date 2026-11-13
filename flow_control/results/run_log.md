@@ -89,3 +89,16 @@ Nothing contradicts CLAUDE.md.
   first 5 actions along their axis in their sign (x, y: 0.10 to 0.17; z: 0.01 to 0.04, LIBERO
   action units), 4 to 10 times the seed-to-seed s.d. Output: `results/probe/steering_check.txt`
 - wall time: 1.9 minutes
+
+### Stage 1: Flow Control reproduction, 2026-11-12
+
+- command: `sbatch jobs/rollout_job.sh --out results/data/stage1.jsonl --tasks 12 60 --conditions unsteered steered --states 0-49 --workers 12`
+  (submitted before rollout_job.sh took the script name as its first argument)
+- job: 22936817 (H100); checkpoint `gs://openpi-assets/checkpoints/pi05_libero`, openpi default
+  precision; env seed 0; noise stream 0 (seed per task, initial state, replan); tau 5, sigma 1.5;
+  replan every 5 steps; at most 400 steps after 10 settling steps
+- trials: LIBERO-90 tasks 12 and 60, initial states 0 to 49, unsteered and steered: 200 episodes
+- analysis: `python src/analysis/stage1.py` (exact McNemar, Wilson intervals)
+- result: task 12 unsteered 20/50, steered 35/50 (McNemar p = 6.1e-05); task 60 unsteered 26/50,
+  steered 50/50 (p = 1.2e-07). Paper: 23 -> 33 and 27 -> 47.
+- wall time: 11.4 min (10.0 min of episodes)
