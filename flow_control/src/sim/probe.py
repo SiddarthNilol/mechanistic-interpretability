@@ -6,6 +6,7 @@ For both tasks, on initial state 0:
   1. builds the env, checks the task name, prints the observation keys and the object names;
   2. prints the privileged state (end effector, target, goal, held) and saves both camera
      images, rotated as the policy sees them, and the whole policy request to results/probe/;
+  2b. pushes each action axis and reports where the end effector moves (the action frame);
   3. moves the gripper to the target with a hand-written script (open, go above, descend,
      close, lift) and reports whether is_held turns True and the object rises with the hand;
   4. opens the gripper while lifted (the Stage 2 "drop") and reports that held turns False and
@@ -53,6 +54,18 @@ def probe(task_index: int):
         Image.fromarray(request[key]).save(OUT / f"task{task_index}_{key.split('/')[1]}.png")
     print("policy input:", {k: (v.shape, v.dtype) if hasattr(v, "shape") else v for k, v in request.items()})
     np.savez(OUT / f"task{task_index}_request.npz", **request)  # for src/policy/check_server.py
+
+    # 2b. action frame: does action dim i move the end effector along world axis i?
+    for axis in range(3):
+        obs = L.reset(env, initial_states[0])
+        start = np.array(obs["robot0_eef_pos"])
+        action = [0.0] * 7
+        action[axis], action[6] = 1.0, -1.0
+        for _ in range(5):
+            obs, _, _, _ = env.step(action)
+        print(f"action +{'xyz'[axis]} for 5 steps moves the end effector by "
+              f"{np.round(100 * (obs['robot0_eef_pos'] - start), 2).tolist()} cm (world x, y, z)")
+    obs = L.reset(env, initial_states[0])
 
     # 3. grasp by script
     target = s["target"]

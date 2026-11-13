@@ -26,7 +26,8 @@ import numpy as np
 SETTLE_STEPS = 10  # openpi: let objects fall into place before the policy acts
 MAX_STEPS = 400  # openpi's limit for LIBERO-90 (longest training demo 373 steps)
 SETTLE_ACTION = [0.0] * 6 + [-1.0]
-IMAGE_SIZE = 256  # LIBERO renders 256 x 256; openpi resizes to 224 on the server side
+IMAGE_SIZE = 256  # LIBERO renders 256 x 256
+POLICY_IMAGE_SIZE = 224  # openpi's client resizes (with padding) to 224 before sending
 
 
 @dataclasses.dataclass(frozen=True)
@@ -79,11 +80,18 @@ def quat2axisangle(quat):
 
 
 def policy_input(obs, instruction: str) -> dict:
-    """The request openpi's LIBERO client sends: both images rotated 180 degrees (as in the
-    training data), the 8-dim robot state, and the prompt."""
+    """The request openpi's LIBERO client sends (examples/libero/main.py): both images rotated
+    180 degrees (as in the training data) and resized with padding to 224, the 8-dim robot
+    state, and the prompt."""
+    from openpi_client import image_tools
+
+    def image(key):
+        rotated = np.ascontiguousarray(obs[key][::-1, ::-1])
+        return image_tools.convert_to_uint8(image_tools.resize_with_pad(rotated, POLICY_IMAGE_SIZE, POLICY_IMAGE_SIZE))
+
     return {
-        "observation/image": np.ascontiguousarray(obs["agentview_image"][::-1, ::-1]),
-        "observation/wrist_image": np.ascontiguousarray(obs["robot0_eye_in_hand_image"][::-1, ::-1]),
+        "observation/image": image("agentview_image"),
+        "observation/wrist_image": image("robot0_eye_in_hand_image"),
         "observation/state": np.concatenate(
             (obs["robot0_eef_pos"], quat2axisangle(obs["robot0_eef_quat"]), obs["robot0_gripper_qpos"])
         ).astype(np.float32),
