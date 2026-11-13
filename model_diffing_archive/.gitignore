@@ -1,0 +1,7 @@
+__pycache__/
+.DS_Store
+*.log
+# openpi is cloned by jobs/setup_env.sh at a pinned commit
+third_party/
+# large arrays behind the figures; the small json files next to them are committed
+results/data/*.npz
