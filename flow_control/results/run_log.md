@@ -66,3 +66,26 @@ LIBERO-90, plus 10 settling steps).
 Nothing contradicts CLAUDE.md.
 
 ## Runs
+
+### Module 1 probe (simulator access), 2026-11-12
+
+- command: `sbatch jobs/sim_job.sh python src/sim/probe.py`
+- jobs: 22929482 (H100; grasp aimed at the bowl center and gripped nothing) and 22935674 (H100,
+  grasp at the rim); also 22928294, a duplicate of the first on an H200
+- tasks 12 and 60, initial state 0, env seed 0; no policy
+- results: action dims 0 to 2 move the end effector along world x, y, z (4.4 to 5.4 cm in 5 steps
+  at action 1.0); rim grasp at +5 cm in y holds the bowl (rose 11.3 cm, `is_held` True after
+  lifting, False right after closing); opening the gripper drops it (`is_held` False);
+  teleporting by 5 cm in x moved task 60's bowl 5.0 cm, task 12's 3.7 cm plus 1.1 cm in y
+- output: `results/probe/` (images, `probe_log.txt`)
+- wall time: about 1 minute each
+
+### Module 2 check (on-axis response), 2026-11-12
+
+- command: `sbatch jobs/gpu_job.sh python src/policy/check_server.py`
+- job: 22935702 (H200); checkpoint `gs://openpi-assets/checkpoints/pi05_libero`, openpi default
+  precision (bfloat16); noise seeds 0 to 7; injection tau 5, sigma 1.5
+- result: on the probe's saved observation of each task, all 6 commands shift the mean of the
+  first 5 actions along their axis in their sign (x, y: 0.10 to 0.17; z: 0.01 to 0.04, LIBERO
+  action units), 4 to 10 times the seed-to-seed s.d. Output: `results/probe/steering_check.txt`
+- wall time: 1.9 minutes
