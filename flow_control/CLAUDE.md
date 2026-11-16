@@ -50,14 +50,16 @@ Add automatic disturbances to rollouts:
 
 - Drop: while the object is held and before it reaches the goal, at a random time, override the gripper command to open for a few steps so the object falls, then return control.
 - Shift: before the grasp, move the target object a few centimeters.
+- Distractor swap: before the grasp, move a distractor object of the same kind (the other black bowl) to a point a few centimeters from the target, so the gripper's nearest bowl is the wrong one. The target must stay the object the instruction names (still the left bowl in task 60, still the bowl at the back in task 12) and keep its identity, since LIBERO scores by object identity. Do not literally exchange two identical bowls: the images would not change but the scored object would, which makes the episode unwinnable rather than harder.
+- Moved goal: while the object is held and before it reaches the goal, move the goal object (tray or plate) a few centimeters on the table, then return control. The oracle controller reads the goal's new position at the next replan.
 
 Run three policies under each disturbance, 50 paired trials per task: unsteered, Flow Control with the privileged scripted controller (oracle tracker), and no disturbance as reference.
 
-Record for every episode: success, and what the policy did after the disturbance (re-grasped, kept moving to the goal with an empty gripper, stalled, other).
+Record for every episode: success, and what the policy did after the disturbance (re-grasped, kept moving to the goal with an empty gripper, grasped the wrong object, placed at the goal's old position, stalled, other).
 
 Also measure commitment after a drop: at frames just after the drop, inject +command and -command toward the object and report how much the output action changes along that axis (their on-axis response), compared with frames early in the episode.
 
-This stage answers: can steering fix a drop at all, and how committed is the policy to carrying on.
+This stage answers: can steering fix a drop at all, how committed is the policy to carrying on, does it pick the right object when a look-alike is closer, and does it follow a goal that moves.
 
 ## Stage 3: steering extensions
 
