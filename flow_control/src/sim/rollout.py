@@ -12,6 +12,11 @@ Conditions:
     unsteered   command None
     steered     at every replan, the scripted controller's command (controller.py), computed
                 from privileged state
+    Stage 3 (steered plus extensions, active only while controller.far_from_target):
+    veto        gripper written "open" and pushed (server.py GRIPPER_M)
+    adaptive    translation push with the smallest M in server.ADAPTIVE_MS whose fidelity
+                reaches ADAPTIVE_THRESHOLD
+    both        veto and adaptive
 
 Pairing: replan k of the episode on (task, initial state) uses noise seed
 episode_seed(task, state, k, stream) in every condition (injection.py). The two conditions
@@ -51,7 +56,8 @@ import injection  # noqa: E402
 import libero_env as L  # noqa: E402
 
 REPLAN = 5  # actions executed per chunk, as in openpi and the paper
-CONDITIONS = ("unsteered", "steered")
+CONDITIONS = ("unsteered", "steered", "veto", "adaptive", "both")
+ADAPTIVE_THRESHOLD = 0.8  # offline (Stage 3 push test): wrong1 frames reach median fidelity 0.92
 EARLY_REPLAN = 2  # commitment test: the "early in the episode" frame (step 10)
 POST_DROP_FRAMES = 2  # ... and this many replans after the drop ends
 
@@ -97,14 +103,15 @@ def episode(job: tuple, record: bool = False, frames_dir: str | None = None, gra
     obs = disturbance.at_reset(env, L.reset(env, initial_states[state_index]))
     plan: collections.deque = collections.deque()
     replan, done, held_ever = 0, False, False
-    commands, trace, saved = [], [], {}
+    commands, trace, saved, extensions = [], [], {}, []
     recent: collections.deque = collections.deque(maxlen=grasp_history)  # Stage 3: the last replans' requests
     frames, frame_commands = [], []
     for step in range(L.MAX_STEPS):
         if not plan:
             s = L.state(env, obs, task)
             held_ever |= s["held"]
-            command = controller.command(s) if condition == "steered" else None
+            command = controller.command(s) if condition != "unsteered" else None
+            gated = condition in ("veto", "adaptive", "both") and controller.far_from_target(s)
             commands.append(None if command is None else list(command))
             request = L.policy_input(obs, instruction)
             if stage2:
@@ -117,7 +124,14 @@ def episode(job: tuple, record: bool = False, frames_dir: str | None = None, gra
                 _grasp_frames(saved, recent, env, task, replan, step, request, s)
             request["noise_seed"] = injection.episode_seed(task_index, state_index, replan, stream)
             request["command"] = None if command is None else list(command)
-            chunk = np.asarray(client.infer(request)["actions"])
+            if gated and condition in ("veto", "both"):
+                request["gripper"] = -1
+            if gated and condition in ("adaptive", "both"):
+                request["adaptive"] = ADAPTIVE_THRESHOLD
+            reply = client.infer(request)
+            chunk = np.asarray(reply["actions"])
+            if condition in ("veto", "adaptive", "both"):
+                extensions.append([int(gated), reply.get("push_m", 0)])
             plan.extend(chunk[:REPLAN])
             replan += 1
         if record:
@@ -139,6 +153,8 @@ def episode(job: tuple, record: bool = False, frames_dir: str | None = None, gra
         "success": bool(done), "steps": step + 1, "replans": replan, "held_ever": bool(held_ever),
         "commands": commands, "seconds": round(time.time() - started, 1),
     }
+    if extensions:
+        result["extensions"] = extensions  # per replan: [gate active, translation M used]
     if stage2:
         s = L.state(env, obs, task)
         trace.append({"step": step + 1, "eef": s["eef"].round(4).tolist(), "grip": round(float(s["gripper"][0] - s["gripper"][1]), 4),

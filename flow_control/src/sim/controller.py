@@ -21,6 +21,7 @@ from __future__ import annotations
 import numpy as np
 
 ABOVE_GOAL = np.array([0.0, 0.0, 0.12])  # meters
+GATE = 0.08  # Stage 3: horizontal distance from the target beyond which the extensions act (m)
 
 
 def target_point(state: dict) -> np.ndarray:
@@ -34,6 +35,14 @@ def command(state: dict) -> tuple[int, int]:
     return axis, 1 if vector[axis] >= 0 else -1
 
 
+def far_from_target(state: dict) -> bool:
+    """Stage 3 gate for the gripper veto and adaptive strength: the target is not held and the
+    end effector is more than GATE from it horizontally. Offline (Stage 3 diagnostic), the replans
+    before a correct grasp were within 7.4 cm of the target and those before a wrong grasp at
+    9.6 cm or more, so inside the gate the policy is left to grasp as plain Flow Control."""
+    return (not state["held"]) and float(np.linalg.norm((state["target"] - state["eef"])[:2])) > GATE
+
+
 if __name__ == "__main__":  # self-test: python src/sim/controller.py
     s = {"eef": np.zeros(3), "target": np.array([0.02, -0.30, 0.01]), "goal": np.array([0.4, 0.0, 0.0]), "held": False}
     assert command(s) == (1, -1), "before the grasp: toward the object, dominant -y"
@@ -41,4 +50,7 @@ if __name__ == "__main__":  # self-test: python src/sim/controller.py
     assert command(s) == (0, 1), "after the grasp: toward 12 cm above the goal, dominant +x"
     s["eef"] = np.array([0.4, 0.0, -0.2])
     assert command(s) == (2, 1), "above the goal: up"
+    assert not far_from_target(s), "held: gate off"
+    s = {"eef": np.zeros(3), "target": np.array([0.05, 0.05, -0.1]), "held": False}
+    assert not far_from_target(s) and far_from_target({**s, "target": np.array([0.1, 0.0, 0.0])}), "gate"
     print("controller.py: ok")

@@ -9,7 +9,18 @@ which the simulator side sends with every observation:
                   condition gets the same noise at the same replan (pairing).
     command       None (unsteered) or [axis, sign]: Flow Control's injection (injection.py).
 
-The reply is openpi's: "actions", the (10, 7) chunk in LIBERO's units, ready for env.step.
+Stage 3 closed loop, optional (both use the stronger push, push.py):
+    gripper       None, or -1 (open) / +1 (close): written into the gripper dim of the starting
+                  noise and pushed for `gripper_m` Euler steps (default GRIPPER_M)
+    adaptive      None, or a fidelity threshold: candidates with the translation push for
+                  M in ADAPTIVE_MS, tried in order on the same noise; the first whose fidelity
+                  (cosine between the command and the mean translation of the first 5 actions)
+                  reaches the threshold is returned, else the one with the largest M. Trying them
+                  in order returns the same chunk as sampling all in one batch and picking the
+                  smallest passing M.
+
+The reply is openpi's: "actions", the (10, 7) chunk in LIBERO's units, ready for env.step; with
+a Stage 3 field also "push_m" (the M used for translation) and "fidelity".
 The model, weights, transforms and 10 Euler steps are openpi's, unchanged (openpi's default
 inference precision, bfloat16, as in the published LIBERO evaluation).
 """
@@ -21,11 +32,21 @@ import logging
 import pathlib
 import sys
 
+import numpy as np
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import injection  # noqa: E402
+import push as P  # noqa: E402
 
 CONFIG_NAME = "pi05_libero"
 CHECKPOINT = "gs://openpi-assets/checkpoints/pi05_libero"
+ADAPTIVE_MS = (0, 2, 4, 6, 8)
+GRIPPER_M = 6  # offline (Stage 3 push test): "open" stops all closings before a wrong grasp at M = 6
+
+
+def fidelity(actions: np.ndarray, axis: int, sign: int) -> float:
+    move = np.asarray(actions)[: injection.TAU, :3].mean(axis=0)
+    return float(sign * move[axis] / (np.linalg.norm(move) + 1e-9))
 
 
 class FlowControlPolicy:
@@ -33,6 +54,7 @@ class FlowControlPolicy:
 
     def __init__(self, policy):
         self._policy = policy
+        self._pushed = None  # built on the first Stage 3 request (compiles the pushed sampler)
 
     @property
     def metadata(self):
@@ -42,11 +64,34 @@ class FlowControlPolicy:
         obs = dict(obs)
         seed = obs.pop("noise_seed")
         command = obs.pop("command", None)
+        gripper = obs.pop("gripper", None)
+        gripper_m = int(obs.pop("gripper_m", GRIPPER_M))
+        threshold = obs.pop("adaptive", None)
         noise = injection.base_noise(int(seed))
         if command is not None:
             axis, sign = (int(c) for c in command)
             noise = injection.inject(noise, axis, sign)
-        return self._policy.infer(obs, noise=noise)
+        if gripper is None and threshold is None:
+            return self._policy.infer(obs, noise=noise)  # Stage 1 and 2 path, unchanged
+        if self._pushed is None:
+            self._pushed = P.PushedPolicy(self._policy)
+        push = np.zeros_like(noise)
+        m = np.zeros(injection.MODEL_ACTION_DIM, dtype=np.int32)
+        if gripper is not None:
+            noise = injection.inject_gripper(noise, int(gripper))
+            push += P.push_array(injection.GRIPPER_DIM, int(gripper))
+            m[injection.GRIPPER_DIM] = gripper_m
+        candidates = ADAPTIVE_MS if (threshold is not None and command is not None) else (0,)
+        for steps in candidates:
+            p, mm = push.copy(), m.copy()
+            if command is not None and steps:
+                p += P.push_array(axis, sign)
+                mm[axis] = steps
+            actions, _ = self._pushed.infer(obs, noise, p, mm)
+            fid = fidelity(actions, axis, sign) if command is not None else None
+            if threshold is None or fid is None or fid >= float(threshold):
+                break
+        return {"actions": actions, "push_m": int(steps), "fidelity": fid}
 
 
 def main():

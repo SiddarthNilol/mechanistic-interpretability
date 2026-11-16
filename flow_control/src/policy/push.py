@@ -10,7 +10,9 @@ openpi's `Pi0.sample_actions` has no hook for this, and openpi must not be edite
 without the train-time RTC prefix, which pi05_libero does not use) with one added line: after
 each Euler step i < M, x_t += push. `push` is a (10, 32) array: sigma / sqrt(K) * sign on the
 commanded dim for the first tau chunk steps (the same steps the starting-noise command uses),
-zero elsewhere. M is passed as data, so every M shares one compiled function.
+zero elsewhere. M is passed as data, so every M shares one compiled function. M can also be set
+per action dim (a length-32 array), so the gripper and a translation axis can be pushed for
+different numbers of Euler steps in one sample (Stage 3 closed loop).
 
 `PushedPolicy` wraps an openpi Policy: `infer(obs, noise, push, m)` returns the LIBERO actions
 (10, 7) and the model-space chunk (10, 32); `conformity(obs, chunk)` is the frozen policy's
@@ -69,7 +71,7 @@ def _sample_pushed(self, rng, observation, noise, push, m):
         )
         v_t = self.action_out_proj(suffix_out[:, -self.action_horizon:])
         x_next = x_t + dt * v_t
-        x_next = x_next + jnp.where(i < m, 1.0, 0.0) * push  # the only change from openpi
+        x_next = x_next + jnp.where(i < m, 1.0, 0.0) * push  # the only change from openpi (m: per dim)
         return x_next, time + dt, i + 1
 
     def cond(carry):
@@ -103,13 +105,15 @@ class PushedPolicy:
         inputs = jax.tree.map(lambda x: jnp.repeat(jnp.asarray(x)[np.newaxis, ...], batch, axis=0), inputs)
         return inputs, _model.Observation.from_dict(inputs)
 
-    def infer(self, obs: dict, noise: np.ndarray, push: np.ndarray | None = None, m: int = 0):
+    def infer(self, obs: dict, noise: np.ndarray, push: np.ndarray | None = None, m=0):
+        """m: Euler steps with the push, one int for all dims or one per dim (length 32)."""
         import jax
         import jax.numpy as jnp
 
         inputs, observation = self._observation(obs)
         push = np.zeros_like(noise) if push is None else push
-        chunk = self._sample(self._key, observation, jnp.asarray(noise)[None], jnp.asarray(push)[None], jnp.int32(m))
+        m = np.broadcast_to(np.asarray(m, dtype=np.int32), (injection.MODEL_ACTION_DIM,))
+        chunk = self._sample(self._key, observation, jnp.asarray(noise)[None], jnp.asarray(push)[None], jnp.asarray(m))
         outputs = {"state": np.asarray(inputs["state"][0]), "actions": np.asarray(chunk[0])}
         actions = self._policy._output_transform(jax.tree.map(lambda x: x, outputs))["actions"]
         return np.asarray(actions), np.asarray(chunk[0])
