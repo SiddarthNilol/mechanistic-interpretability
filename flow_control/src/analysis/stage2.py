@@ -10,6 +10,7 @@ Behavior after the disturbance, one label per episode, from the per-replan trace
 state, used here only for scoring). Checked in this order, the first that applies wins:
 
     not disturbed       the trigger never happened (for example the bowl was never carried)
+    landed on goal      drop: success within LANDED steps of the forced opening (fell onto it)
     grasped wrong       another bowl was held after the disturbance (any time, for distractor)
     grasped target      the target was held again after the disturbance (drop, shift); for
                         distractor and none: the target was held at some point
@@ -45,10 +46,11 @@ FIGURES = ROOT / "results" / "figures"
 KINDS = ("none", "drop", "shift", "distractor", "moved_goal")
 SHORT = {"none": "none", "drop": "drop", "shift": "shift", "distractor": "distr.", "moved_goal": "goal\nmoved"}
 CONDITIONS = ("unsteered", "steered")
-LABELS = ("grasped target", "grasped wrong", "empty carry", "went to old spot", "placed at old goal", "still holding",
+LABELS = ("landed on goal", "grasped target", "grasped wrong", "empty carry", "went to old spot", "placed at old goal", "still holding",
           "stalled", "other", "not disturbed")
-LABEL_COLORS = dict(zip(LABELS, ("#4C72B0", "#C44E52", "#DD8452", "#937860", "#8172B3", "#64B5CD", "#8C8C8C",
+LABEL_COLORS = dict(zip(LABELS, ("#55A868", "#4C72B0", "#C44E52", "#DD8452", "#937860", "#8172B3", "#64B5CD", "#8C8C8C",
                                  "#CCB974", "#E5E5E5")))
+LANDED = 30  # steps: a success this soon after a drop means the bowl fell onto the goal
 EMPTY_CARRY = 0.10  # m
 OLD_SPOT = 0.03  # m
 OLD_GOAL = 0.06  # m
@@ -66,6 +68,8 @@ def label(r: dict) -> str:
         return "not disturbed"
     t0 = d.get("open_until", d.get("step", 0)) if kind != "none" else 0
     post = [e for e in trace if e["step"] > t0] if kind not in ("none", "distractor") else trace
+    if kind == "drop" and r["success"] and r["steps"] <= d["open_until"] + LANDED:
+        return "landed on goal"
     if any(e["other_held"] for e in post):
         return "grasped wrong"
     if kind in ("drop", "shift") and any(e["held"] for e in post):

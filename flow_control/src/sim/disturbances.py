@@ -3,12 +3,18 @@
 Five kinds, all applied by the simulator, never by the policy:
 
     none         no disturbance (the reference)
-    drop         while the target is carried (held, lifted LIFT m above where it started) and
-                 not yet near the goal, at a random time: force the gripper open for OPEN_STEPS
-                 steps so the object falls, then return control
-    shift        before the grasp, when the gripper first comes within APPROACH m (horizontal)
-                 of the target, or at step SHIFT_LATEST if it never does: teleport the target a
-                 few cm in a random horizontal direction
+    drop         while the target is carried (lifted LIFT m above where it started, with the
+                 gripper within CARRY m of it) and not over the goal: after a random delay, or
+                 earlier when it is about to come within FAR[task] of the goal, force the
+                 gripper open for OPEN_STEPS steps so the object falls, then return control.
+                 (Smoke test: robosuite's grasp check is not always True while a rim-grasped
+                 bowl is carried, so "carried" does not use it; and task 12's plate is only
+                 ~16 cm from the bowl, so a drop "halfway" landed on the plate.)
+    shift        before the grasp, when the gripper first comes within APPROACH m (3D) of the
+                 target, or at step SHIFT_LATEST if it never does: teleport the target a few cm
+                 in a random horizontal direction, turned by 45 degrees if needed to stay clear
+                 of the goal and the other bowls. (Smoke test: in task 12 the gripper starts
+                 within 10 cm of the bowl horizontally, so a horizontal trigger fired at step 0.)
     distractor   at the start of the episode: put the nearest other bowl 12 cm from the target
                  (center to center), on a side that keeps the instruction true. Object identities
                  are kept, because LIBERO scores the named object. From the probe
@@ -44,11 +50,13 @@ import libero_env as L
 KINDS = ("none", "drop", "shift", "distractor", "moved_goal")
 
 LIFT = 0.03  # m above the target's starting height: "carried", not just grasped
+CARRY = 0.08  # m, gripper to target: the gripper is the one lifting it
+FAR = {12: 0.12, 60: 0.15}  # m, horizontal, target to goal center: drop and moved_goal fire before this
 OPEN_STEPS = 10  # drop: steps with the gripper forced open (0.5 s at 20 Hz)
 DELAY = (0, 20)  # drop, moved_goal: steps after the carry starts, uniform, inclusive
-PROGRESS = 0.5  # ... or earlier, once the target has covered half its way to the goal
 SHIFT_SIZE = (0.03, 0.06)  # m
-APPROACH = 0.10  # m, horizontal: shift fires when the gripper first gets this close
+APPROACH = 0.12  # m, 3D: shift fires when the gripper first gets this close
+BOWL_CLEARANCE = 0.12  # m, center to center: closer and two bowls overlap or push (probe)
 SHIFT_LATEST = 60  # steps: shift fires here if the gripper never got close
 GOAL_SIZE = (0.05, 0.08)  # m
 GOAL_CLEARANCE = 0.16  # m, goal center to a resting bowl's center
@@ -74,6 +82,19 @@ def draw(task_index: int, state_index: int, kind: str, stream: int = 0) -> dict:
 
 def _horizontal(a, b) -> float:
     return float(np.linalg.norm((np.asarray(a) - np.asarray(b))[:2]))
+
+
+def _clear_offset(offset, origin, obstacles) -> tuple[np.ndarray, int]:
+    """The drawn horizontal offset, turned by 0, 45, 90, ... degrees until origin + offset is at
+    least the given clearance from every (position, clearance) obstacle. Returns (offset, turns);
+    turns = -1 if no direction is clear (the drawn offset is used)."""
+    offset = np.asarray(offset, dtype=float)
+    for turn in range(8):
+        c, s = np.cos(turn * np.pi / 4), np.sin(turn * np.pi / 4)
+        candidate = np.array([c * offset[0] - s * offset[1], s * offset[0] + c * offset[1], 0.0])
+        if all(_horizontal(origin + candidate, p) >= clearance for p, clearance in obstacles):
+            return candidate, turn
+    return offset, -1
 
 
 class Disturbance:
@@ -123,40 +144,37 @@ class Disturbance:
             if L.is_held(env, self.task.target):
                 self.info.update(fired=True, step=step, skipped="held before the shift fired")
                 return
-            close = _horizontal(eef, target) <= APPROACH
+            close = float(np.linalg.norm(eef - target)) <= APPROACH
             if close or step >= SHIFT_LATEST:
-                L.move_object(env, self.task.target, self.params["offset"])
-                self.info.update(fired=True, step=step, why="approach" if close else "latest",
-                                 target_before=target.round(4).tolist(), eef=eef.round(4).tolist())
+                bowls = [L.body_position(env, n) for n in L._inner(env).objects_dict if "bowl" in n and n != self.task.target]
+                offset, turns = _clear_offset(self.params["offset"], target,
+                                              [(goal, GOAL_CLEARANCE)] + [(b, BOWL_CLEARANCE) for b in bowls])
+                L.move_object(env, self.task.target, offset)
+                self.info.update(fired=True, step=step, why="approach" if close else "latest", offset=offset.round(4).tolist(),
+                                 turns=turns, target_before=target.round(4).tolist(), eef=eef.round(4).tolist())
             return
         # drop and moved_goal share the "carried" trigger
-        carried = L.is_held(env, self.task.target) and target[2] > self._start[2] + LIFT
+        carried = target[2] > self._start[2] + LIFT and float(np.linalg.norm(eef - target)) <= CARRY
         if not carried:
             return
+        distance = _horizontal(target, goal)
         if self._carry_start is None:
             self._carry_start = step
-            self._carry_distance = _horizontal(target, goal)
-        progressed = _horizontal(target, goal) <= PROGRESS * self._carry_distance
-        if step - self._carry_start < self.params["delay"] and not progressed:
+            if distance <= FAR[self.task.index]:
+                self.info.update(fired=True, step=step, skipped=f"carried only within {FAR[self.task.index]} m of the goal")
+                return
+        about_to_arrive = distance <= FAR[self.task.index] + 0.02
+        if step - self._carry_start < self.params["delay"] and not about_to_arrive:
             return
-        self.info.update(fired=True, step=step, carry_start=self._carry_start,
-                         why="delay" if not progressed else "progress", target_before=target.round(4).tolist(),
+        self.info.update(fired=True, step=step, carry_start=self._carry_start, why="arriving" if about_to_arrive else "delay",
+                         distance_to_goal=round(distance, 4), target_before=target.round(4).tolist(),
                          goal_before=goal.round(4).tolist(), eef=eef.round(4).tolist())
         if self.kind == "drop":
             self._open_until = step + OPEN_STEPS
             self.info["open_until"] = self._open_until
         else:
-            offset = np.asarray(self.params["offset"])
-            resting = [L.body_position(env, n) for n in L._inner(env).objects_dict
-                       if "bowl" in n and not L.is_held(env, n)]
-            for turn in range(8):
-                c, s_ = np.cos(turn * np.pi / 4), np.sin(turn * np.pi / 4)
-                candidate = np.array([c * offset[0] - s_ * offset[1], s_ * offset[0] + c * offset[1], 0.0])
-                if all(_horizontal(goal + candidate, b) >= GOAL_CLEARANCE for b in resting):
-                    break
-            else:
-                candidate = offset  # no clear direction: keep the drawn one, flagged below
-                turn = -1
+            resting = [L.body_position(env, n) for n in L._inner(env).objects_dict if "bowl" in n and n != self.task.target]
+            candidate, turn = _clear_offset(self.params["offset"], goal, [(b, GOAL_CLEARANCE) for b in resting])
             L.move_object(env, self.task.goal, candidate)
             self.info.update(goal_offset=candidate.round(4).tolist(), turns=turn)
 
