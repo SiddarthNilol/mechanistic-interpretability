@@ -150,3 +150,59 @@ in every group.
   through the noise). Translation steering has to act before the descent, not at the grasp.
 - Numbers: `results/data/stage3_diagnostic.json` (per frame), `stage3_diagnostic_summary.json`;
   figure `results/figures/stage3_diagnostic.png`.
+
+## Stage 3 stronger push (offline)
+
+Setup: the paper's Appendix D push. Besides the command in the starting noise, the sample is
+shifted by sigma / sqrt(10) along the command after each of the first M of the 10 Euler steps
+(M = 0 is plain Flow Control; our sampler at M = 0 matches openpi's `Policy.infer` exactly).
+Frames: task 60 rollouts (none and distractor), 40 per group: early (step 10), wrong5, wrong3,
+wrong1 (the 5th, 3rd and last replan before the first wrong-bowl grasp), right3, right1 (before
+the first correct grasp). 4 noise seeds per frame. Conformity = the frozen policy's flow-matching
+loss on the chunk (32 fixed draws; the unsteered chunk scores about 0.008).
+
+Translation toward the target (median fidelity / median conformity):
+
+| frames | M = 0 | M = 2 | M = 4 | M = 6 | M = 8 |
+|---|---|---|---|---|---|
+| early | 0.94 / 0.008 | 0.95 / 0.010 | 0.96 / 0.015 | 0.97 / 0.027 | 0.98 / 0.053 |
+| wrong5 | 0.02 / 0.010 | 0.08 / 0.011 | 0.23 / 0.018 | 0.54 / 0.039 | 0.83 / 0.121 |
+| wrong3 | 0.26 / 0.008 | 0.44 / 0.010 | 0.63 / 0.015 | 0.82 / 0.032 | 0.95 / 0.112 |
+| wrong1 | 0.00 / 0.009 | 0.07 / 0.010 | 0.35 / 0.015 | 0.83 / 0.038 | 0.96 / 0.148 |
+| right1 | -0.06 / 0.008 | 0.01 / 0.010 | 0.18 / 0.016 | 0.72 / 0.047 | 0.94 / 0.156 |
+
+Gripper written "open" (share of chunks that still close in the first 5 actions; unsteered in
+brackets):
+
+| frames | M = 0 | M = 2 | M = 4 | M = 6 | M = 8 |
+|---|---|---|---|---|---|
+| wrong3 (84%) | 80% | 51% | 2.5% | 0% | 0% |
+| wrong1 (100%) | 95% | 92% | 7.5% | 0% | 0% |
+| right1 (100%) | 98% | 92% | 1.3% | 0% | 0% |
+
+Conformity of the "open" chunk at wrong1: 0.009 (M = 0 and 2), 0.133 (M = 4), 0.155 (M = 8).
+Written "close" closes 100% of chunks at M >= 4 in every group, including early frames where the
+policy never closes.
+
+- Shows:
+  - The push restores control where plain Flow Control has almost none. Before a wrong grasp
+    (wrong1) the motion is nearly vertical and M = 0 barely turns it (fidelity 0.00); M = 6
+    reaches 0.83 at about 4x the unsteered conformity loss, M = 8 reaches 0.96 at about 17x.
+    Early frames already follow the command at M = 0 (0.94), so a fixed large M would pay a cost
+    there for nothing. That is the case for the adaptive rule (smallest M that passes a fidelity
+    threshold).
+  - The gripper is controllable with the push: at M >= 4, "open" stops 92% to 100% of closings
+    at wrong1, against at most 5 points with the noise alone (Stage 3 diagnostic). The switch is
+    sharp between M = 2 and M = 4. It is just as effective before correct grasps (right1), so a
+    veto must be gated on the gripper's position relative to the target.
+  - Forcing "open" where the policy wants to close is far from its own actions (conformity 0.13
+    to 0.16, as costly as M = 8 translation), while forcing "open" where it was going to stay
+    open costs nothing (early: 0.008 at M = 4).
+- Does not show: whether higher fidelity and a blocked grasp turn into success in closed loop
+  (the policy may re-descend on the wrong bowl at the next replan, and high conformity loss may
+  mean jerky or failed motions). Task 60 only, 4 seeds, one noise stream, frames from one run.
+  Conformity is an evaluation measure; we have not tied a loss value to task failure.
+- Implication: Stage 3 items 2 (gated gripper veto with M >= 4 on the gripper dim) and 3
+  (adaptive M) both have an offline basis. Next is the closed loop (item 4).
+- Numbers: `results/data/stage3_push.json` (per frame and M), `stage3_push_summary.json`;
+  figure `results/figures/stage3_push.png`.

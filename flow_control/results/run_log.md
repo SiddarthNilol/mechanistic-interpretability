@@ -151,3 +151,12 @@ Nothing contradicts CLAUDE.md.
 - diagnostic: `sbatch --time=02:00:00 jobs/gpu_job.sh python src/policy/grasp_diagnostic.py --frames /scratch/sk12590/fc/stage3_diag/frames --out results/data/stage3_diagnostic.json`
   (job 23386179, H100, 34.5 min); noise seeds 0 to 7; tau 5, sigma 1.5 for translation and gripper
 - frames: 940 (300 episodes); analysis `python src/analysis/stage3_diagnostic.py`
+
+### Stage 3 stronger push (offline), 2026-11-16
+
+- rollouts (frames only, 6 replans kept before each grasp): task 60, `--disturbances none distractor --grasp-frames /scratch/sk12590/fc/stage3_push/frames --grasp-history 6` (job 23392221, 13.5 min; 200 frame files); episode outcomes not committed
+- smoke test: job 23392522 (`--limit`), M = 0 matched openpi `Policy.infer` (max difference 0.00)
+- test: `sbatch --dependency=afterok:23392221 --time=02:00:00 --job-name=fc-push jobs/gpu_job.sh python src/policy/push_test.py --frames /scratch/sk12590/fc/stage3_push/frames --out results/data/stage3_push.json`
+  (job 23393845, H200, 74.6 min); noise seeds 0 to 3; M in {0, 2, 4, 6, 8}; tau 5, sigma 1.5,
+  push sigma / sqrt(10); conformity 32 draws, key seed 0
+- frames: 240 (40 per group); analysis `python3 src/analysis/stage3_push.py`
