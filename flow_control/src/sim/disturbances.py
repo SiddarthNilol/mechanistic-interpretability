@@ -9,13 +9,23 @@ Five kinds, all applied by the simulator, never by the policy:
     shift        before the grasp, when the gripper first comes within APPROACH m (horizontal)
                  of the target, or at step SHIFT_LATEST if it never does: teleport the target a
                  few cm in a random horizontal direction
-    distractor   at the start of the episode: put the nearest other bowl next to the target, on
-                 the side that keeps the instruction true (task 60: the target stays the left
-                 bowl; task 12: it stays the bowl at the back) and puts the distractor between the
-                 gripper's start and the target. Object identities are kept, because LIBERO scores
-                 the named object.
+    distractor   at the start of the episode: put the nearest other bowl 12 cm from the target
+                 (center to center), on a side that keeps the instruction true. Object identities
+                 are kept, because LIBERO scores the named object. From the probe
+                 (results/probe/stage2_probe.json, all 50 initial states):
+                   task 60: "left" = smallest y. Distractor at +12 cm in y: the target stays the
+                            left bowl and the distractor is nearer the gripper's start, 50/50.
+                   task 12: "at the back" = smallest x (nearest the robot). The target is always
+                            the bowl nearest the gripper's start, so the distractor cannot be made
+                            nearer without breaking the instruction. It goes beside the target
+                            and slightly in front, at (+4, +11.5) cm.
+                 Closer than 12 cm the bowls overlap (8 cm) or push each other away (10 cm).
     moved_goal   while the target is carried, with the same trigger as the drop: teleport the
-                 goal object (tray or plate) a few cm in a random horizontal direction
+                 goal object (tray or plate) a few cm in a random horizontal direction. If that
+                 would bring it within GOAL_CLEARANCE of a resting bowl, the direction is turned
+                 by 45 degrees until it does not (the probe: task 12's plate collides with the
+                 bowls in some directions and is then pushed up to 16 cm off). The actual
+                 displacement is measured CHECK_AFTER steps later.
 
 Randomness (timing, size, direction) comes from a seed per (task, initial state, kind, stream),
 drawn independently of the policy's noise seeds. So the unsteered and steered episodes on one
@@ -41,10 +51,9 @@ SHIFT_SIZE = (0.03, 0.06)  # m
 APPROACH = 0.10  # m, horizontal: shift fires when the gripper first gets this close
 SHIFT_LATEST = 60  # steps: shift fires here if the gripper never got close
 GOAL_SIZE = (0.05, 0.08)  # m
-DISTRACTOR = {  # task -> (direction from target in the world xy plane, center-to-center distance, m)
-    60: ((0.0, 1.0), 0.10),  # PLACEHOLDER, set from results/probe/stage2_probe.json
-    12: ((1.0, 0.0), 0.10),  # PLACEHOLDER
-}
+GOAL_CLEARANCE = 0.16  # m, goal center to a resting bowl's center
+CHECK_AFTER = 10  # steps
+DISTRACTOR = {60: (0.0, 0.12), 12: (0.04, 0.115)}  # task -> offset from the target, world xy, m
 
 
 def draw(task_index: int, state_index: int, kind: str, stream: int = 0) -> dict:
@@ -87,10 +96,10 @@ class Disturbance:
         self._start = L.body_position(env, self.task.target)
         if self.kind != "distractor":
             return obs
-        direction, distance = DISTRACTOR[self.task.index]
+        dx, dy = DISTRACTOR[self.task.index]
         others = [n for n in L._inner(env).objects_dict if "bowl" in n and n != self.task.target]
         nearest = min(others, key=lambda n: _horizontal(L.body_position(env, n), self._start))
-        spot = self._start + distance * np.array([direction[0], direction[1], 0.0])
+        spot = self._start + np.array([dx, dy, 0.0])
         before = L.body_position(env, nearest)
         spot[2] = before[2]
         L.move_object(env, nearest, spot - before)
@@ -102,6 +111,9 @@ class Disturbance:
         return obs
 
     def before_step(self, env, obs, step: int) -> None:
+        if self.kind == "moved_goal" and self.info.get("step") is not None and step == self.info["step"] + CHECK_AFTER:
+            moved = L.body_position(env, self.task.goal) - np.asarray(self.info["goal_before"])
+            self.info["goal_moved"] = moved.round(4).tolist()
         if self.info["fired"] or self.kind in ("none", "distractor"):
             return
         target = L.body_position(env, self.task.target)
@@ -134,8 +146,42 @@ class Disturbance:
             self._open_until = step + OPEN_STEPS
             self.info["open_until"] = self._open_until
         else:
-            L.move_object(env, self.task.goal, self.params["offset"])
+            offset = np.asarray(self.params["offset"])
+            resting = [L.body_position(env, n) for n in L._inner(env).objects_dict
+                       if "bowl" in n and not L.is_held(env, n)]
+            for turn in range(8):
+                c, s_ = np.cos(turn * np.pi / 4), np.sin(turn * np.pi / 4)
+                candidate = np.array([c * offset[0] - s_ * offset[1], s_ * offset[0] + c * offset[1], 0.0])
+                if all(_horizontal(goal + candidate, b) >= GOAL_CLEARANCE for b in resting):
+                    break
+            else:
+                candidate = offset  # no clear direction: keep the drawn one, flagged below
+                turn = -1
+            L.move_object(env, self.task.goal, candidate)
+            self.info.update(goal_offset=candidate.round(4).tolist(), turns=turn)
 
     def gripper(self, step: int):
         """-1 (open) while a drop is forcing the gripper, else None (the policy's own value)."""
         return -1.0 if step < self._open_until else None
+
+
+def check(task_index: int):
+    """Distractor placement on all 50 initial states: python src/sim/disturbances.py (GPU node)."""
+    env, _, initial = L.make_env(task_index)
+    task = L.TASKS[task_index]
+    errors, kept = [], 0
+    for state in range(len(initial)):
+        d = Disturbance("distractor", task_index, state)
+        d.at_reset(env, L.reset(env, initial[state]))
+        errors.append(np.linalg.norm(np.subtract(d.info["distractor_after_settle"], d.info["placed_at"])))
+        names = [n for n in L._inner(env).objects_dict if "bowl" in n]
+        pos = {n: L.body_position(env, n) for n in names}
+        axis = 1 if task_index == 60 else 0
+        kept += min(names, key=lambda n: pos[n][axis]) == task.target
+    print(f"task {task_index} distractor: placement error max {100 * max(errors):.2f} cm, "
+          f"median {100 * np.median(errors):.2f} cm; target still smallest along {'xy'[axis]} in {kept}/{len(initial)}")
+
+
+if __name__ == "__main__":
+    for t in sorted(L.TASKS):
+        check(t)
