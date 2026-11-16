@@ -104,3 +104,49 @@ mean of the first 5 actions along the axis from the gripper to the bowl, with +c
 - Numbers: `results/data/stage2_summary.json`, `stage2_commitment.json`, per-episode traces in
   `results/data/stage2_<disturbance>.jsonl`; figures `results/figures/stage2_success.png`,
   `stage2_behavior.png`, `stage2_commitment.png`.
+
+## Stage 3 diagnostic: commitment and gripper control at wrong grasps
+
+Setup: new rollouts of the frozen `pi05_libero` (task 60: none and distractor; task 12: none;
+both conditions; 300 episodes) saved the policy request at the 2 replans before the first
+wrong-bowl grasp (wrong2, wrong1), before the first correct grasp (right2, right1), and at step 10
+(early): 940 frames. On each frame, 8 noise seeds: translation commands toward the target
+(+/- on its dominant axis), and a gripper command written into the gripper dim of the starting
+noise for the first 5 chunk steps (open = -1.5, close = +1.5; the checkpoint's quantile
+normalization maps the gripper's range to exactly [-1, 1], so these are beyond fully open and
+fully closed).
+
+| task | frames | n | on-axis response | unsteered toward target | chunks that close: unsteered / written open / written close |
+|---|---|---|---|---|---|
+| 12 | early | 100 | 0.17 | 0.20 | 0% / 0% / 0% |
+| 12 | right1 | 49 | 0.07 | 0.00 | 100% / 98% / 100% |
+| 12 | wrong1 | 41 | 0.11 | -0.02 | 100% / 99% / 100% |
+| 60 | early | 200 | 0.12 | 0.59 | 0% / 0% / 0% |
+| 60 | right1 | 81 | 0.11 | -0.23 | 100% / 100% / 100% |
+| 60 | wrong1 | 149 | 0.09 | -0.02 | 99% / 96% / 99% |
+
+Medians in LIBERO action units (mean of the first 5 actions); closing = any of the first 5
+actions' gripper value above 0. Change in the gripper output, close minus open: 0.002 to 0.004
+in every group.
+
+- Shows:
+  - The gripper output ignores a gripper command written into the starting noise. Writing
+    "open" changes the share of chunks that close by at most 4 points, and "close" never makes
+    the policy close early (0% at early frames). So the planned gripper veto, built the paper's
+    way (noise only), cannot stop a wrong grasp.
+  - Translation commands still act just before a wrong grasp (on-axis 0.09 and 0.11, 66% to 71%
+    of the early response), and about as much as before a correct grasp. So the policy is not
+    specifically committed at the wrong grasp; responses are smaller near any grasp.
+  - But the effect is small for the distance involved: at wrong1 the gripper is 3 cm above and
+    4 to 5 cm from the wrong bowl and 12 to 15 cm from the target, while one replan's command
+    moves the output by about 0.03 to 0.05 units toward the target. The mistake is made earlier,
+    during the descent.
+- Does not show: whether a stronger push (Appendix D: shifting the sample during the first M
+  Euler steps) moves the gripper or translation more; we only tested the starting noise (M = 0).
+  Why the gripper is insensitive (likely the flow pulls it to a near-binary value set by the
+  wrist image). One noise stream, frames from one run.
+- Implication: a gripper command needs either the stronger push (to be tested offline) or a
+  different mechanism (overriding the executed gripper action, which is no longer steering
+  through the noise). Translation steering has to act before the descent, not at the grasp.
+- Numbers: `results/data/stage3_diagnostic.json` (per frame), `stage3_diagnostic_summary.json`;
+  figure `results/figures/stage3_diagnostic.png`.

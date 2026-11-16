@@ -142,3 +142,12 @@ Nothing contradicts CLAUDE.md.
 - job 23379590 (H100); noise seeds 0 to 7; frames: 200 drop episodes, early (replan 2) and the
   first two replans after the forced opening: 462 frames
 - wall time: 9.7 minutes
+
+### Stage 3 diagnostic, 2026-11-16
+
+- rollouts (frames only): `sbatch --job-name=fc-s3-t60 jobs/rollout_job.sh src/sim/rollout.py --out /scratch/sk12590/fc/stage3_diag/task60.jsonl --tasks 60 --states 0-49 --disturbances none distractor --grasp-frames /scratch/sk12590/fc/stage3_diag/frames --workers 14`
+  (job 23384698, 13.4 min) and the same for task 12 with `--disturbances none` (job 23384699,
+  6.6 min); episode outcomes not committed (they repeat Stage 2's conditions)
+- diagnostic: `sbatch --time=02:00:00 jobs/gpu_job.sh python src/policy/grasp_diagnostic.py --frames /scratch/sk12590/fc/stage3_diag/frames --out results/data/stage3_diagnostic.json`
+  (job 23386179, H100, 34.5 min); noise seeds 0 to 7; tau 5, sigma 1.5 for translation and gripper
+- frames: 940 (300 episodes); analysis `python src/analysis/stage3_diagnostic.py`
