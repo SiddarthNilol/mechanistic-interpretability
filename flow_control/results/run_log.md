@@ -160,3 +160,15 @@ Nothing contradicts CLAUDE.md.
   (job 23393845, H200, 74.6 min); noise seeds 0 to 3; M in {0, 2, 4, 6, 8}; tau 5, sigma 1.5,
   push sigma / sqrt(10); conformity 32 draws, key seed 0
 - frames: 240 (40 per group); analysis `python3 src/analysis/stage3_push.py`
+
+### Stage 3 closed loop, 2026-11-16
+
+- smoke: job 23404015 (task 60 distractor, states 0-3, steered/veto/adaptive/both, 1.9 min)
+- command (one job per setting): `sbatch --time=02:00:00 --job-name=fc-s3cl-<task>-<kind> jobs/rollout_job.sh src/sim/rollout.py --out results/data/stage3_cl_task<task>_<kind>.jsonl --tasks <task> --states 0-49 --disturbances <kind> --workers 14`
+  (all five conditions by default)
+- jobs: 23404358 (60 distractor, 21.3 min), 23404360 (60 none, 12.8 min), 23404363 (12 none,
+  13.0 min), 23404368 (12 shift, 14.1 min)
+- checkpoint `gs://openpi-assets/checkpoints/pi05_libero`; env seed 0; noise stream 0; tau 5,
+  sigma 1.5; gate 8 cm; veto gripper M 6; adaptive M in {0, 2, 4, 6, 8}, threshold 0.8; at most
+  400 steps; trials 4 settings x 5 conditions x 50 = 1000 episodes
+- analysis: `python3 src/analysis/stage3_closed_loop.py`

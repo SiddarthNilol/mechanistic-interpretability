@@ -206,3 +206,55 @@ policy never closes.
   (adaptive M) both have an offline basis. Next is the closed loop (item 4).
 - Numbers: `results/data/stage3_push.json` (per frame and M), `stage3_push_summary.json`;
   figure `results/figures/stage3_push.png`.
+
+## Stage 3 closed loop (oracle state)
+
+Setup: five conditions, 50 paired trials per setting (same initial states, noise stream 0 and
+disturbance seeds): unsteered, steered (plain Flow Control), veto, adaptive, both. The extensions
+act only while the target is not held and the gripper is more than 8 cm from it horizontally
+(the gate; offline, replans before correct grasps were within 7.4 cm, before wrong grasps 9.6 cm
+or more). Veto: gripper "open" in the starting noise, pushed for 6 Euler steps; inside the gate
+the gripper is left to the policy (not commanded "close", as CLAUDE.md suggested, because the
+policy already closes there 100% of the time offline). Adaptive: candidates M = 0, 2, 4, 6, 8
+tried in order on the same noise; the first with fidelity >= 0.8 is executed, else M = 8. Gate
+radius, veto M and threshold were chosen from the offline Stage 3 frames, which come from these
+same task 60 initial states (see "Does not show").
+
+Successes out of 50 (wrong-bowl grasp episodes in brackets):
+
+| setting | unsteered | steered | veto | adaptive | both |
+|---|---|---|---|---|---|
+| task 60, distractor | 0 (48) | 8 (49) | 0 (4) | 37 (18) | 41 (11) |
+| task 60, none | 25 (25) | 49 (27) | 22 (0) | 50 (1) | 49 (0) |
+| task 12, none | 20 (28) | 34 (14) | 34 (0) | 47 (3) | 44 (0) |
+| task 12, shift | 20 (28) | 30 (18) | 29 (1) | 45 (4) | 41 (0) |
+
+Exact McNemar against steered, paired by initial state: adaptive p = 1e-7 (task 60 distractor,
+31 vs 2 discordant), 2e-4 (task 12 none, 13 vs 0), 6e-5 (task 12 shift, 15 vs 0), 1.0 (task 60
+none, at ceiling); both p = 1e-8, 0.002, 0.001, 1.0. Veto vs steered: p = 0.008 (task 60
+distractor, worse), 1e-7 (task 60 none, worse), 1.0 (task 12). Median steps of successes, task
+60 distractor: 364 steered, 140 adaptive and both. Adaptive's mean M when the gate is on: 4.0 to
+6.1.
+
+- Shows:
+  - Adaptive push strength fixes most of what plain Flow Control could not: task 60 with a
+    distractor goes from 8/50 to 37/50 (41/50 with the veto), and wrong-bowl grasps from 49 to 18
+    (11). It also helps where plain Flow Control was already above unsteered (task 12: 34 to 47,
+    30 to 45). It never lost a paired episode to steered in task 12 or task 60 none.
+  - The veto alone blocks wrong grasps (49 to 4, 27 to 0) but does not help or hurts success: with
+    the gripper held open and only the plain command, the policy hovers over the wrong bowl and
+    never comes within 8 cm of the target (task 60 distractor: gate on at 100% of replans, 0/50).
+    It is useful only combined with a translation push strong enough to move the gripper away.
+  - Veto + adaptive removes nearly all wrong grasps (0 in three settings), but its success is
+    within noise of adaptive alone (41 vs 37, 49 vs 50, 44 vs 47, 41 vs 45).
+- Does not show:
+  - Generalization of the chosen gate, threshold and veto M: they were picked from offline frames
+    of the same task 60 initial states and noise stream. A fresh noise stream (and held-out
+    initial states) is needed before calling these numbers clean.
+  - What the gap that remains is: 9/50 failures on task 60 with a distractor (11 still grasp the
+    wrong bowl at some point), 3 to 9 failures on task 12. Not yet labeled.
+  - Smoothness or safety: high-M chunks have 4x to 17x the policy's conformity loss offline; we
+    did not measure jerk, collisions or contact forces in closed loop.
+  - Anything without oracle state: the gate and the commands read privileged simulator state.
+- Numbers: `results/data/stage3_cl_task{60_distractor,60_none,12_none,12_shift}.jsonl`,
+  `stage3_closed_loop_summary.json`; figure `results/figures/stage3_closed_loop.png`.
