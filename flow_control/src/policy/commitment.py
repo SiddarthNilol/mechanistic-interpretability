@@ -54,7 +54,7 @@ def main():
     print(f"{len(files)} episode files", flush=True)
     for path in files:
         saved = np.load(path)
-        task, state, condition = path.stem.split("_")
+        task, state, condition = path.stem.split("_")[:3]
         for name in sorted({k.split("/")[0] for k in saved.files}):
             obs = {k: (str(saved[f"{name}/{k}"]) if k == "prompt" else saved[f"{name}/{k}"]) for k in REQUEST_KEYS}
             axis, sign = int(saved[f"{name}/axis"]), int(saved[f"{name}/sign"])

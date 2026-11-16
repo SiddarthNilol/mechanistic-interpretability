@@ -61,12 +61,18 @@ Also measure commitment after a drop: at frames just after the drop, inject +com
 
 This stage answers: can steering fix a drop at all, how committed is the policy to carrying on, does it pick the right object when a look-alike is closer, and does it follow a goal that moves.
 
-## Stage 3: steering extensions
+## Stage 3: steering extensions, aimed at choosing the right object
 
-1. Gripper command: also write the gripper dim of the starting noise (open or close) for the first tau steps. Test with the same +/- response measure whether the gripper output follows.
-2. Adaptive strength: at each replan with an active command, generate candidates in one batch with M in {0, 2, 4, 6, 8} (M = 0 is plain Flow Control). Compute fidelity = cosine similarity between the command direction and the mean translation of the first 5 actions of each candidate. Execute the candidate with the smallest M whose fidelity passes a threshold; if none passes, use the largest M. Sweep the threshold over a few values.
+Stage 2 found that the policy recovers from drops on its own (no commitment after a drop) and that the failure direction-only steering cannot fix is grasping the wrong bowl (task 60 with a distractor: 0/50 unsteered, 9/50 oracle steered). Stage 3 therefore aims the two extensions at object choice. Drop frames stay as a secondary test.
 
-Evaluate offline first: on drop frames from Stage 2, plot fidelity against conformity for each fixed M and for the adaptive rule. Conformity = the frozen policy's flow-matching loss on the chunk (paper Eq. 10, fixed set of 32 time and noise draws). Conformity is for evaluation only, not for online selection.
+1. Diagnostic (offline, first): from rollouts of task 60 (distractor and no disturbance), save the policy request at the last two replans before a wrong-bowl grasp, and at ordinary approach frames before a correct grasp. On each frame, with a fixed set of noise seeds, measure (a) the on-axis response of translation commands toward the target, and (b) the gripper response: write open or close into the gripper dim of the starting noise for the first tau steps and report how much the gripper output changes. This answers: is the policy committed at the moment it descends on the wrong bowl, and does the gripper output follow a gripper command at all.
+2. Gripper command as a veto: keep the gripper open (written into the starting noise) unless the end effector is within a few cm of the target, and command close once aligned. Test the +/- gripper response offline first, then closed loop.
+3. Adaptive strength: at each replan with an active command, generate candidates in one batch with M in {0, 2, 4, 6, 8} (M = 0 is plain Flow Control). Compute fidelity = cosine similarity between the command direction and the mean translation of the first 5 actions of each candidate. Execute the candidate with the smallest M whose fidelity passes a threshold; if none passes, use the largest M. Sweep the threshold over a few values. Evaluate offline first: on the wrong-grasp frames and the Stage 2 drop frames, plot fidelity against conformity for each fixed M and for the adaptive rule. Conformity = the frozen policy's flow-matching loss on the chunk (paper Eq. 10, fixed set of 32 time and noise draws). Conformity is for evaluation only, not for online selection.
+4. Closed loop with oracle state: plain Flow Control, + gripper veto, + adaptive strength, + both, on task 60 (distractor, none) and task 12 (none, shift), 50 paired trials each. Report success, wrong-grasp rate and steps.
+
+Side items: redesign the task 12 distractor (Stage 2 showed moving the nearest bowl makes the task easier) or drop it; optionally add a harder drop (object lands away from the gripper).
+
+Build items 2 to 4 only if the diagnostic shows they can matter, and report the diagnostic in `summary.md` first.
 
 ## Stage 4: state tracker (post-hoc, VLA frozen)
 
@@ -110,7 +116,7 @@ Failure breakdown for every failed episode: wrong target, drop not recovered, gr
 ## Deliverables
 
 - `results/summary.md`: one short section per stage with what it shows, what it does not show, and the numbers.
-- `results/figures/`: Stage 1 bar chart (ours vs paper), Stage 2 behavior breakdown and commitment plot, Stage 3 fidelity vs conformity plot, Stage 4 tracker accuracy (nominal vs disturbed), Stage 5 success table and failure breakdown.
+- `results/figures/`: Stage 1 bar chart (ours vs paper), Stage 2 behavior breakdown and commitment plot, Stage 3 diagnostic (wrong-grasp frames) and fidelity vs conformity plot, Stage 4 tracker accuracy (nominal vs disturbed), Stage 5 success table and failure breakdown.
 - `results/run_log.md`: every run with command, checkpoint, seeds, trial counts and wall time.
 
 ## Rules

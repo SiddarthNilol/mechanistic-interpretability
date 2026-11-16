@@ -28,6 +28,7 @@ MODEL_ACTION_DIM = 32  # the model's padded action dim
 TAU = 5  # chunk steps that carry the command
 SIGMA = 1.5  # command magnitude, in normalized action units
 MOTION_DIMS = 6  # dx, dy, dz, droll, dpitch, dyaw
+GRIPPER_DIM = 6  # LIBERO: -1 opens, +1 closes (Stage 3 gripper command)
 
 
 def base_noise(seed: int) -> np.ndarray:
@@ -45,6 +46,18 @@ def inject(noise: np.ndarray, axis: int, sign: int, *, tau: int = TAU, sigma: fl
     return steered
 
 
+def inject_gripper(noise: np.ndarray, sign: int, *, tau: int = TAU, sigma: float = SIGMA) -> np.ndarray:
+    """Stage 3 gripper command: a copy of `noise` with the gripper dim of the first tau chunk
+    steps set to sign * sigma (sign +1 = close, -1 = open, as in LIBERO's action convention; the
+    checkpoint's normalization maps the gripper's range to about [-1, 1], so the sign carries
+    over). Other dims untouched, so it combines with inject()."""
+    if sign not in (-1, 1):
+        raise ValueError(f"gripper sign must be +-1, got {sign}")
+    steered = np.array(noise, copy=True)
+    steered[:tau, GRIPPER_DIM] = sign * sigma
+    return steered
+
+
 def episode_seed(task_index: int, initial_state: int, replan: int, stream: int = 0) -> int:
     """One seed per (task, initial state, replan index, noise stream), the same for every
     condition, so conditions are paired."""
@@ -58,5 +71,8 @@ if __name__ == "__main__":  # self-test: python src/policy/injection.py
     assert np.all(y[:TAU, 2] == -SIGMA) and np.all(y[:TAU, [0, 1, 3, 4, 5]] == 0), "command rows"
     assert np.array_equal(y[TAU:], x[TAU:]), "later chunk steps untouched"
     assert np.array_equal(y[:, MOTION_DIMS:], x[:, MOTION_DIMS:]), "gripper and padding untouched"
+    g = inject_gripper(y, sign=-1)
+    assert np.all(g[:TAU, GRIPPER_DIM] == -SIGMA) and np.array_equal(g[:, :MOTION_DIMS], y[:, :MOTION_DIMS]), "gripper"
+    assert np.array_equal(g[TAU:], y[TAU:]) and np.array_equal(g[:, GRIPPER_DIM + 1:], y[:, GRIPPER_DIM + 1:]), "gripper only"
     assert episode_seed(12, 3, 7) == episode_seed(12, 3, 7) != episode_seed(12, 3, 8), "episode seeds"
     print("injection.py: ok")
