@@ -10,6 +10,7 @@ Behavior after the disturbance, one label per episode, from the per-replan trace
 state, used here only for scoring). Checked in this order, the first that applies wins:
 
     not disturbed       the trigger never happened (for example the bowl was never carried)
+    reached moved goal  moved_goal: success (the bowl went to the goal's new position)
     landed on goal      drop: success within LANDED steps of the forced opening (fell onto it)
     grasped wrong       another bowl was held after the disturbance (any time, for distractor)
     grasped target      the target was held again after the disturbance (drop, shift); for
@@ -46,9 +47,9 @@ FIGURES = ROOT / "results" / "figures"
 KINDS = ("none", "drop", "shift", "distractor", "moved_goal")
 SHORT = {"none": "none", "drop": "drop", "shift": "shift", "distractor": "distr.", "moved_goal": "goal\nmoved"}
 CONDITIONS = ("unsteered", "steered")
-LABELS = ("landed on goal", "grasped target", "grasped wrong", "empty carry", "went to old spot", "placed at old goal", "still holding",
+LABELS = ("reached moved goal", "landed on goal", "grasped target", "grasped wrong", "empty carry", "went to old spot", "placed at old goal", "still holding",
           "stalled", "other", "not disturbed")
-LABEL_COLORS = dict(zip(LABELS, ("#55A868", "#4C72B0", "#C44E52", "#DD8452", "#937860", "#8172B3", "#64B5CD", "#8C8C8C",
+LABEL_COLORS = dict(zip(LABELS, ("#2CA02C", "#55A868", "#4C72B0", "#C44E52", "#DD8452", "#937860", "#8172B3", "#64B5CD", "#8C8C8C",
                                  "#CCB974", "#E5E5E5")))
 LANDED = 30  # steps: a success this soon after a drop means the bowl fell onto the goal
 EMPTY_CARRY = 0.10  # m
@@ -68,6 +69,8 @@ def label(r: dict) -> str:
         return "not disturbed"
     t0 = d.get("open_until", d.get("step", 0)) if kind != "none" else 0
     post = [e for e in trace if e["step"] > t0] if kind not in ("none", "distractor") else trace
+    if kind == "moved_goal" and r["success"]:
+        return "reached moved goal"
     if kind == "drop" and r["success"] and r["steps"] <= d["open_until"] + LANDED:
         return "landed on goal"
     if any(e["other_held"] for e in post):
@@ -176,7 +179,7 @@ def plot_success(summary: dict):
         ax.set_title(f"task {task}")
         ax.set_ylim(0, 1.12)
     axes[0].set_ylabel("success rate (50 paired episodes)")
-    axes[0].legend(loc="upper right", fontsize=10)
+    axes[0].legend(loc="upper left", bbox_to_anchor=(0, 1.13), ncol=2, fontsize=10)
     rate, t, k = min(worst)
     fig.suptitle(f"Oracle Flow Control is weakest under {k.replace('_', ' ')} (task {t}: {rate:.0%} steered success)",
                  fontweight="bold", y=1.02)

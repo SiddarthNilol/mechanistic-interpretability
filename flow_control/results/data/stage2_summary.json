@@ -1,0 +1,587 @@
+{
+ "12/none": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 21,
+   "ci": [
+    0.2937500326623289,
+    0.5576655833662493
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 17,
+    "other": 6,
+    "grasped wrong": 27
+   },
+   "success_by_label": {
+    "grasped target": 15,
+    "other": 6
+   }
+  },
+  "steered": {
+   "success": 35,
+   "ci": [
+    0.5624964942316114,
+    0.8089644656969429
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 29,
+    "other": 8,
+    "grasped wrong": 13
+   },
+   "success_by_label": {
+    "grasped target": 29,
+    "other": 6
+   }
+  },
+  "only_steered": 14,
+  "only_unsteered": 0,
+  "mcnemar_p": 0.0001220703125,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 21,
+   "steered": 35
+  }
+ },
+ "12/drop": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 22,
+   "ci": [
+    0.31162199120253675,
+    0.576939720818897
+   ],
+   "fired": 20,
+   "labels": {
+    "grasped target": 19,
+    "not disturbed": 30,
+    "empty carry": 1
+   },
+   "success_by_label": {
+    "grasped target": 19,
+    "not disturbed": 2,
+    "empty carry": 1
+   },
+   "cost_vs_none": {
+    "none": 21,
+    "disturbed": 22,
+    "pairs": 50,
+    "mcnemar_p": 1.0
+   }
+  },
+  "steered": {
+   "success": 32,
+   "ci": [
+    0.5014101676670928,
+    0.7586125042828953
+   ],
+   "fired": 36,
+   "labels": {
+    "grasped target": 30,
+    "not disturbed": 14,
+    "grasped wrong": 2,
+    "empty carry": 3,
+    "other": 1
+   },
+   "success_by_label": {
+    "grasped target": 29,
+    "empty carry": 1,
+    "not disturbed": 2
+   },
+   "cost_vs_none": {
+    "none": 35,
+    "disturbed": 32,
+    "pairs": 50,
+    "mcnemar_p": 0.25
+   }
+  },
+  "only_steered": 12,
+  "only_unsteered": 2,
+  "mcnemar_p": 0.012939453125,
+  "both_disturbed": {
+   "pairs": 19,
+   "unsteered": 19,
+   "steered": 17
+  }
+ },
+ "12/shift": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 16,
+   "ci": [
+    0.20758216186752546,
+    0.4581029741967757
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 16,
+    "grasped wrong": 31,
+    "other": 3
+   },
+   "success_by_label": {
+    "grasped target": 16
+   },
+   "cost_vs_none": {
+    "none": 21,
+    "disturbed": 16,
+    "pairs": 50,
+    "mcnemar_p": 0.125
+   }
+  },
+  "steered": {
+   "success": 28,
+   "ci": [
+    0.4230602791811031,
+    0.6883780087974634
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 29,
+    "other": 3,
+    "grasped wrong": 17,
+    "went to old spot": 1
+   },
+   "success_by_label": {
+    "grasped target": 27,
+    "went to old spot": 1
+   },
+   "cost_vs_none": {
+    "none": 35,
+    "disturbed": 28,
+    "pairs": 50,
+    "mcnemar_p": 0.015625
+   }
+  },
+  "only_steered": 12,
+  "only_unsteered": 0,
+  "mcnemar_p": 0.00048828125,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 16,
+   "steered": 28
+  }
+ },
+ "12/distractor": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 44,
+   "ci": [
+    0.7619518250454469,
+    0.9438239988188064
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 41,
+    "other": 7,
+    "stalled": 1,
+    "grasped wrong": 1
+   },
+   "success_by_label": {
+    "grasped target": 41,
+    "other": 3
+   },
+   "cost_vs_none": {
+    "none": 21,
+    "disturbed": 44,
+    "pairs": 50,
+    "mcnemar_p": 2.384185791015625e-07
+   }
+  },
+  "steered": {
+   "success": 48,
+   "ci": [
+    0.8653990920638485,
+    0.9889611157718264
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 45,
+    "other": 5
+   },
+   "success_by_label": {
+    "grasped target": 45,
+    "other": 3
+   },
+   "cost_vs_none": {
+    "none": 35,
+    "disturbed": 48,
+    "pairs": 50,
+    "mcnemar_p": 0.0009765625
+   }
+  },
+  "only_steered": 5,
+  "only_unsteered": 1,
+  "mcnemar_p": 0.21875,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 44,
+   "steered": 48
+  }
+ },
+ "12/moved_goal": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 19,
+   "ci": [
+    0.2586278922714569,
+    0.5184955317714105
+   ],
+   "fired": 21,
+   "labels": {
+    "reached moved goal": 17,
+    "still holding": 1,
+    "not disturbed": 29,
+    "placed at old goal": 2,
+    "grasped wrong": 1
+   },
+   "success_by_label": {
+    "reached moved goal": 17,
+    "not disturbed": 2
+   },
+   "cost_vs_none": {
+    "none": 21,
+    "disturbed": 19,
+    "pairs": 50,
+    "mcnemar_p": 0.625
+   }
+  },
+  "steered": {
+   "success": 31,
+   "ci": [
+    0.4815044682285895,
+    0.741372107728543
+   ],
+   "fired": 33,
+   "labels": {
+    "reached moved goal": 30,
+    "placed at old goal": 1,
+    "not disturbed": 17,
+    "other": 1,
+    "grasped wrong": 1
+   },
+   "success_by_label": {
+    "reached moved goal": 30,
+    "not disturbed": 1
+   },
+   "cost_vs_none": {
+    "none": 35,
+    "disturbed": 31,
+    "pairs": 50,
+    "mcnemar_p": 0.21875
+   }
+  },
+  "only_steered": 15,
+  "only_unsteered": 3,
+  "mcnemar_p": 0.007537841796875,
+  "both_disturbed": {
+   "pairs": 20,
+   "unsteered": 16,
+   "steered": 18
+  }
+ },
+ "60/none": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 26,
+   "ci": [
+    0.38511744790185476,
+    0.6520286480910008
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 24,
+    "grasped wrong": 25,
+    "other": 1
+   },
+   "success_by_label": {
+    "grasped target": 24,
+    "other": 1,
+    "grasped wrong": 1
+   }
+  },
+  "steered": {
+   "success": 48,
+   "ci": [
+    0.8653990920638485,
+    0.9889611157718264
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 21,
+    "grasped wrong": 26,
+    "other": 3
+   },
+   "success_by_label": {
+    "grasped target": 21,
+    "grasped wrong": 24,
+    "other": 3
+   }
+  },
+  "only_steered": 22,
+  "only_unsteered": 0,
+  "mcnemar_p": 4.76837158203125e-07,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 26,
+   "steered": 48
+  }
+ },
+ "60/drop": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 22,
+   "ci": [
+    0.31162199120253675,
+    0.576939720818897
+   ],
+   "fired": 28,
+   "labels": {
+    "empty carry": 5,
+    "not disturbed": 22,
+    "grasped wrong": 5,
+    "grasped target": 17,
+    "other": 1
+   },
+   "success_by_label": {
+    "empty carry": 5,
+    "grasped target": 16,
+    "grasped wrong": 1
+   },
+   "cost_vs_none": {
+    "none": 26,
+    "disturbed": 22,
+    "pairs": 50,
+    "mcnemar_p": 0.21875
+   }
+  },
+  "steered": {
+   "success": 42,
+   "ci": [
+    0.7148578382325514,
+    0.916625793645991
+   ],
+   "fired": 49,
+   "labels": {
+    "grasped wrong": 4,
+    "grasped target": 38,
+    "not disturbed": 1,
+    "other": 4,
+    "empty carry": 3
+   },
+   "success_by_label": {
+    "grasped wrong": 3,
+    "grasped target": 36,
+    "empty carry": 3
+   },
+   "cost_vs_none": {
+    "none": 48,
+    "disturbed": 42,
+    "pairs": 50,
+    "mcnemar_p": 0.0703125
+   }
+  },
+  "only_steered": 21,
+  "only_unsteered": 1,
+  "mcnemar_p": 1.0967254638671875e-05,
+  "both_disturbed": {
+   "pairs": 28,
+   "unsteered": 22,
+   "steered": 26
+  }
+ },
+ "60/shift": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 25,
+   "ci": [
+    0.3664451421899842,
+    0.6335548578100159
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 23,
+    "grasped wrong": 26,
+    "went to old spot": 1
+   },
+   "success_by_label": {
+    "grasped target": 22,
+    "grasped wrong": 2,
+    "went to old spot": 1
+   },
+   "cost_vs_none": {
+    "none": 26,
+    "disturbed": 25,
+    "pairs": 50,
+    "mcnemar_p": 1.0
+   }
+  },
+  "steered": {
+   "success": 48,
+   "ci": [
+    0.8653990920638485,
+    0.9889611157718264
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped target": 23,
+    "grasped wrong": 26,
+    "went to old spot": 1
+   },
+   "success_by_label": {
+    "grasped target": 22,
+    "grasped wrong": 25,
+    "went to old spot": 1
+   },
+   "cost_vs_none": {
+    "none": 48,
+    "disturbed": 48,
+    "pairs": 50,
+    "mcnemar_p": 1.0
+   }
+  },
+  "only_steered": 24,
+  "only_unsteered": 1,
+  "mcnemar_p": 1.5497207641601562e-06,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 25,
+   "steered": 48
+  }
+ },
+ "60/distractor": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 0,
+   "ci": [
+    0.0,
+    0.07134760017861413
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped wrong": 50
+   },
+   "success_by_label": {},
+   "cost_vs_none": {
+    "none": 26,
+    "disturbed": 0,
+    "pairs": 50,
+    "mcnemar_p": 2.9802322387695312e-08
+   }
+  },
+  "steered": {
+   "success": 9,
+   "ci": [
+    0.09770192623042152,
+    0.30796053788389155
+   ],
+   "fired": 50,
+   "labels": {
+    "grasped wrong": 49,
+    "stalled": 1
+   },
+   "success_by_label": {
+    "grasped wrong": 9
+   },
+   "cost_vs_none": {
+    "none": 48,
+    "disturbed": 9,
+    "pairs": 50,
+    "mcnemar_p": 3.637978807091713e-12
+   }
+  },
+  "only_steered": 9,
+  "only_unsteered": 0,
+  "mcnemar_p": 0.00390625,
+  "both_disturbed": {
+   "pairs": 50,
+   "unsteered": 0,
+   "steered": 9
+  }
+ },
+ "60/moved_goal": {
+  "pairs": 50,
+  "unsteered": {
+   "success": 25,
+   "ci": [
+    0.3664451421899842,
+    0.6335548578100159
+   ],
+   "fired": 28,
+   "labels": {
+    "reached moved goal": 25,
+    "not disturbed": 22,
+    "placed at old goal": 3
+   },
+   "success_by_label": {
+    "reached moved goal": 25
+   },
+   "cost_vs_none": {
+    "none": 26,
+    "disturbed": 25,
+    "pairs": 50,
+    "mcnemar_p": 1.0
+   }
+  },
+  "steered": {
+   "success": 48,
+   "ci": [
+    0.8653990920638485,
+    0.9889611157718264
+   ],
+   "fired": 50,
+   "labels": {
+    "reached moved goal": 48,
+    "placed at old goal": 1,
+    "still holding": 1
+   },
+   "success_by_label": {
+    "reached moved goal": 48
+   },
+   "cost_vs_none": {
+    "none": 48,
+    "disturbed": 48,
+    "pairs": 50,
+    "mcnemar_p": 1.0
+   }
+  },
+  "only_steered": 23,
+  "only_unsteered": 0,
+  "mcnemar_p": 2.384185791015625e-07,
+  "both_disturbed": {
+   "pairs": 28,
+   "unsteered": 25,
+   "steered": 28
+  }
+ },
+ "commitment": {
+  "12/early": {
+   "n": 100,
+   "median": 0.17229362160949707,
+   "mean": 0.1567844925372467,
+   "toward_median": 0.08717812815503032,
+   "unsteered_toward_median": 0.19818569184448276
+  },
+  "12/after drop": {
+   "n": 110,
+   "median": 0.20800143364727944,
+   "mean": 0.2327556627148578,
+   "toward_median": 0.09019707573938221,
+   "unsteered_toward_median": 0.490266562575169
+  },
+  "60/early": {
+   "n": 100,
+   "median": 0.18461931044311522,
+   "mean": 0.18008589294428057,
+   "toward_median": 0.08653712147244665,
+   "unsteered_toward_median": 0.22108280776769673
+  },
+  "60/after drop": {
+   "n": 152,
+   "median": 0.17595929119415282,
+   "mean": 0.19769099474087512,
+   "toward_median": 0.07176363412926645,
+   "unsteered_toward_median": 0.5703023299659445
+  }
+ }
+}
