@@ -53,7 +53,6 @@ import libero_env as L  # noqa: E402
 REPLAN = 5  # actions executed per chunk, as in openpi and the paper
 CONDITIONS = ("unsteered", "steered")
 EARLY_REPLAN = 2  # commitment test: the "early in the episode" frame (step 10)
-GRASP_FRAMES = 2  # Stage 3 diagnostic: replans saved before the first wrong and first correct grasp
 POST_DROP_FRAMES = 2  # ... and this many replans after the drop ends
 
 _worker: dict = {}
@@ -79,7 +78,8 @@ def _other_held(env, task) -> str | None:
     return None
 
 
-def episode(job: tuple, record: bool = False, frames_dir: str | None = None, grasp_frames: str | None = None) -> dict:
+def episode(job: tuple, record: bool = False, frames_dir: str | None = None, grasp_frames: str | None = None,
+            grasp_history: int = 2) -> dict:
     """One episode. job = (task, initial state, condition, stream[, disturbance]).
 
     With record=True the result also has "frames": the front camera image at every step (256 x
@@ -98,7 +98,7 @@ def episode(job: tuple, record: bool = False, frames_dir: str | None = None, gra
     plan: collections.deque = collections.deque()
     replan, done, held_ever = 0, False, False
     commands, trace, saved = [], [], {}
-    recent: collections.deque = collections.deque(maxlen=GRASP_FRAMES)  # Stage 3: the last replans' requests
+    recent: collections.deque = collections.deque(maxlen=grasp_history)  # Stage 3: the last replans' requests
     frames, frame_commands = [], []
     for step in range(L.MAX_STEPS):
         if not plan:
@@ -172,7 +172,7 @@ def _maybe_save(saved: dict, disturbance, replan: int, step: int, request: dict,
 
 
 def _grasp_frames(saved: dict, recent, env, task, replan: int, step: int, request: dict, s: dict):
-    """Stage 3 diagnostic frames. Keeps the last GRASP_FRAMES replans; when another bowl is
+    """Stage 3 diagnostic frames. Keeps the last --grasp-history replans; when another bowl is
     held for the first time, saves them as wrong1 (the replan just before) and wrong2; when the
     target is held for the first time, as right1 and right2. Also saves replan EARLY_REPLAN as
     early. Each frame: the request, the command toward the target, and the positions."""
@@ -211,6 +211,7 @@ def main():
                         help="Stage 2: run every episode under each of these (default: Stage 1, no disturbance field)")
     parser.add_argument("--frames", help="Stage 2: directory for the drop episodes' commitment-test frames")
     parser.add_argument("--grasp-frames", help="Stage 3: directory for frames before the first wrong and correct grasps")
+    parser.add_argument("--grasp-history", type=int, default=2, help="Stage 3: replans saved before each grasp (wrong1 ... wrongN)")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=8000)
@@ -231,7 +232,8 @@ def main():
 
     started = time.time()
     with mp.get_context("spawn").Pool(args.workers, initializer=_init, initargs=(args.host, args.port)) as pool:
-        run = functools.partial(episode, frames_dir=args.frames, grasp_frames=args.grasp_frames)
+        run = functools.partial(episode, frames_dir=args.frames, grasp_frames=args.grasp_frames,
+                                grasp_history=args.grasp_history)
         for i, result in enumerate(pool.imap_unordered(run, jobs)):
             with out.open("a") as f:
                 f.write(json.dumps(result) + "\n")
