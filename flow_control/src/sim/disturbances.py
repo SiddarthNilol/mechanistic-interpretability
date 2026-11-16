@@ -132,7 +132,7 @@ class Disturbance:
         return obs
 
     def before_step(self, env, obs, step: int) -> None:
-        if self.kind == "moved_goal" and self.info.get("step") is not None and step == self.info["step"] + CHECK_AFTER:
+        if self.kind == "moved_goal" and "goal_offset" in self.info and step == self.info["step"] + CHECK_AFTER:
             moved = L.body_position(env, self.task.goal) - np.asarray(self.info["goal_before"])
             self.info["goal_moved"] = moved.round(4).tolist()
         if self.info["fired"] or self.kind in ("none", "distractor"):
