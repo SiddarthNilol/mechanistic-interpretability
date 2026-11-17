@@ -220,6 +220,14 @@ tried in order on the same noise; the first with fidelity >= 0.8 is executed, el
 radius, veto M and threshold were chosen from the offline Stage 3 frames, which come from these
 same task 60 initial states (see "Does not show").
 
+| condition | what it does |
+|---|---|
+| unsteered | the frozen policy alone, no command |
+| steered | plain Flow Control: the scripted controller's direction written into the starting noise (M = 0) |
+| veto | steered, plus the gripper held open while the gripper is more than 8 cm from the target, so it cannot close on the wrong bowl |
+| adaptive | steered, plus the push repeated during the first M Euler steps, with the smallest M that makes the motion follow the command (fidelity >= 0.8), when more than 8 cm from the target |
+| both | veto and adaptive together |
+
 Successes out of 50 (wrong-bowl grasp episodes in brackets):
 
 | setting | unsteered | steered | veto | adaptive | both |
