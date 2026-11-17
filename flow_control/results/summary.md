@@ -284,8 +284,8 @@ Successes out of 50, wrong-bowl grasp episodes in brackets.
 
 - Shows: the adaptive gain holds on new noise and new disturbance placements, with the same
   pattern: a large gain on task 60 with a distractor (10 to 31) and on task 12 (33 to 47, 25 to
-  43), none at the ceiling (task 60 none). Wrong-bowl grasps drop from 48 to 19 and from 12 to 19
-  to 2 to 3.
+  43), none at the ceiling (task 60 none). Wrong-bowl grasps drop from 48 to 19 (task 60 distractor) and
+  from 12 and 19 to 2 and 3 (task 12).
 - Does not show: held-out scenes (LIBERO has only these 50 initial states per task). Task 60 with
   a distractor is 6 lower than on stream 0 (31 vs 37, within the Wilson intervals), so the stream
   0 number is likely somewhat optimistic; 19/50 failures remain there, 19 episodes still grasp
