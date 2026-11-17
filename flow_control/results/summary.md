@@ -266,3 +266,29 @@ distractor, worse), 1e-7 (task 60 none, worse), 1.0 (task 12). Median steps of s
   - Anything without oracle state: the gate and the commands read privileged simulator state.
 - Numbers: `results/data/stage3_cl_task{60_distractor,60_none,12_none,12_shift}.jsonl`,
   `stage3_closed_loop_summary.json`; figure `results/figures/stage3_closed_loop.png`.
+
+### Held-out check: noise stream 1
+
+The gate, threshold and veto M above were chosen on stream 0 frames. Rerun of unsteered, steered
+and adaptive with noise stream 1 (new starting noise at every replan, and new distractor and shift
+placements, which are seeded by the stream), same 50 initial states per task.
+
+| setting | unsteered | steered | adaptive | McNemar adaptive vs steered | stream 0 adaptive |
+|---|---|---|---|---|---|
+| task 60, distractor | 0 (48) | 10 (48) | 31 (19) | 26 vs 5, p = 2e-4 | 37 |
+| task 60, none | 24 (26) | 47 (27) | 48 (1) | 3 vs 2, p = 1.0 | 50 |
+| task 12, none | 19 (31) | 33 (12) | 47 (2) | 14 vs 0, p = 1e-4 | 47 |
+| task 12, shift | 16 (31) | 25 (19) | 43 (3) | 19 vs 1, p = 4e-5 | 45 |
+
+Successes out of 50, wrong-bowl grasp episodes in brackets.
+
+- Shows: the adaptive gain holds on new noise and new disturbance placements, with the same
+  pattern: a large gain on task 60 with a distractor (10 to 31) and on task 12 (33 to 47, 25 to
+  43), none at the ceiling (task 60 none). Wrong-bowl grasps drop from 48 to 19 and from 12 to 19
+  to 2 to 3.
+- Does not show: held-out scenes (LIBERO has only these 50 initial states per task). Task 60 with
+  a distractor is 6 lower than on stream 0 (31 vs 37, within the Wilson intervals), so the stream
+  0 number is likely somewhat optimistic; 19/50 failures remain there, 19 episodes still grasp
+  the wrong bowl at some point. Veto and both were not rerun.
+- Numbers: `results/data/stage3_heldout_task*.jsonl`, `stage3_heldout_summary.json`; figure
+  `results/figures/stage3_heldout.png`.

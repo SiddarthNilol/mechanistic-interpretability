@@ -172,3 +172,12 @@ Nothing contradicts CLAUDE.md.
   sigma 1.5; gate 8 cm; veto gripper M 6; adaptive M in {0, 2, 4, 6, 8}, threshold 0.8; at most
   400 steps; trials 4 settings x 5 conditions x 50 = 1000 episodes
 - analysis: `python3 src/analysis/stage3_closed_loop.py`
+
+### Stage 3 held-out check (noise stream 1), 2026-11-16
+
+- command (one job per setting): `sbatch --time=02:00:00 --job-name=fc-s1-<task>-<kind> jobs/rollout_job.sh src/sim/rollout.py --out results/data/stage3_heldout_task<task>_<kind>.jsonl --tasks <task> --states 0-49 --disturbances <kind> --conditions unsteered steered adaptive --stream 1 --workers 14`
+- jobs: 23409058 (60 distractor, 14.2 min), 23409059 (60 none, 8.2 min), 23409060 (12 none,
+  7.8 min), 23409061 (12 shift, 8.7 min)
+- noise stream 1 (also seeds the disturbance placement); other settings as the stream 0 closed
+  loop; trials 4 settings x 3 conditions x 50 = 600 episodes
+- analysis: `python3 src/analysis/stage3_closed_loop.py --prefix stage3_heldout`

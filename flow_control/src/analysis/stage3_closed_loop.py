@@ -1,6 +1,7 @@
 """Stage 3 closed loop analysis: success, wrong-grasp rate and steps per condition. numpy + matplotlib.
 
     python3 src/analysis/stage3_closed_loop.py      # reads results/data/stage3_cl_*.jsonl
+    python3 src/analysis/stage3_closed_loop.py --prefix stage3_heldout   # noise stream 1 check
 
 Conditions (src/sim/rollout.py): unsteered, steered (plain Flow Control, oracle), veto, adaptive,
 both. Settings: task 60 (distractor, none), task 12 (none, shift). Per setting and condition:
@@ -8,11 +9,14 @@ successes out of 50 with Wilson 95% intervals; exact McNemar test against steere
 initial state; wrong-grasp rate (another bowl held at any replan); median steps of successes;
 for the extensions, the share of replans with the gate active and the mean translation M used.
 
-Writes results/data/stage3_closed_loop_summary.json and results/figures/stage3_closed_loop.{png,pdf}.
+Writes results/data/<name>_summary.json and results/figures/<name>.{png,pdf}, with name
+stage3_closed_loop (or the prefix, for another set of runs). Conditions missing from the runs
+are left out.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import pathlib
@@ -45,9 +49,9 @@ def mcnemar(b: int, c: int) -> float:
     return min(1.0, 2 * tail)
 
 
-def load() -> list[dict]:
+def load(prefix: str) -> list[dict]:
     rows = []
-    for path in sorted(DATA.glob("stage3_cl_*.jsonl")):
+    for path in sorted(DATA.glob(f"{prefix}_*.jsonl")):
         rows += [json.loads(line) for line in path.read_text().splitlines()]
     return rows
 
@@ -81,7 +85,7 @@ def summarize(rows: list[dict]) -> dict:
     return out
 
 
-def plot(summary: dict):
+def plot(summary: dict, name: str):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -92,10 +96,11 @@ def plot(summary: dict):
     settings = [s for s in SETTINGS if f"{s[0]}/{s[1]}/steered" in summary]
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     x = np.arange(len(settings))
-    width = 0.8 / len(CONDITIONS)
-    for i, c in enumerate(CONDITIONS):
+    conditions = [c for c in CONDITIONS if any(f"{t}/{k}/{c}" in summary for t, k in settings)]
+    width = 0.8 / len(conditions)
+    for i, c in enumerate(conditions):
         es = [summary.get(f"{t}/{k}/{c}") for t, k in settings]
-        xs = x + (i - (len(CONDITIONS) - 1) / 2) * width
+        xs = x + (i - (len(conditions) - 1) / 2) * width
         for ax, key in ((axes[0], "success"), (axes[1], "wrong_grasp")):
             vals = [e[key] if e else np.nan for e in es]
             ax.bar(xs, vals, width, color=COLORS[c], label=c)
@@ -113,28 +118,34 @@ def plot(summary: dict):
     handles, labels = axes[0].get_legend_handles_labels()
     d = {c: summary.get(f"60/distractor/{c}") for c in CONDITIONS}
     best = max((c for c in ("veto", "adaptive", "both") if d[c]), key=lambda c: d[c]["success"])
-    name = {"both": "veto + adaptive"}.get(best, best)
-    title = (f"Task 60 with a distractor: {name} reaches {d[best]['success']}/50 against {d['steered']['success']}/50 "
+    name_c = {"both": "veto + adaptive"}.get(best, best)
+    stream = "" if name == "stage3_closed_loop" else " (held-out noise stream 1)"
+    title = (f"Task 60 with a distractor{stream}: {name_c} reaches {d[best]['success']}/50 against {d['steered']['success']}/50 "
              f"for plain Flow Control (exact McNemar p = {d[best]['vs_steered']['p']:.2g})")
     fig.suptitle(title, fontweight="bold", fontsize=12, y=1.0)
     fig.legend(handles, labels, fontsize=10, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 0.0))
-    fig.text(0.01, -0.07, "Frozen pi05_libero, 50 initial states per setting, paired noise (stream 0) and disturbance seeds. "
+    fig.text(0.01, -0.07, f"Frozen pi05_libero, 50 initial states per setting, paired noise ({'stream 0' if name == 'stage3_closed_loop' else 'stream 1'}) and disturbance seeds. "
              "Oracle state. Extensions act only while the target is not held and the gripper is more than 8 cm from it: "
-             "veto = gripper \"open\" pushed for 6 Euler steps; adaptive = smallest M in {0,2,4,6,8} with fidelity >= 0.8.",
+             + ("veto = gripper \"open\" pushed for 6 Euler steps; " if "veto" in conditions else "")
+             + "adaptive = smallest M in {0,2,4,6,8} with fidelity >= 0.8.",
              fontsize=9, color="#444444", ha="left", va="top", wrap=True)
     fig.tight_layout()
     FIGURES.mkdir(parents=True, exist_ok=True)
     for suffix in ("png", "pdf"):
-        fig.savefig(FIGURES / f"stage3_closed_loop.{suffix}", dpi=200, bbox_inches="tight")
-    print(f"wrote {FIGURES / 'stage3_closed_loop'}.png and .pdf")
+        fig.savefig(FIGURES / f"{name}.{suffix}", dpi=200, bbox_inches="tight")
+    print(f"wrote {FIGURES / name}.png and .pdf")
 
 
 def main():
-    summary = summarize(load())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prefix", default="stage3_cl")
+    args = parser.parse_args()
+    name = "stage3_closed_loop" if args.prefix == "stage3_cl" else args.prefix
+    summary = summarize(load(args.prefix))
     for k, v in summary.items():
         print(k, json.dumps(v))
-    (DATA / "stage3_closed_loop_summary.json").write_text(json.dumps(summary, indent=1))
-    plot(summary)
+    (DATA / f"{name}_summary.json").write_text(json.dumps(summary, indent=1))
+    plot(summary, name)
 
 
 if __name__ == "__main__":
