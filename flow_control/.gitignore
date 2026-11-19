@@ -6,4 +6,4 @@ third_party/
 # arrays (data, saved policy requests); images, json and text results are committed
 *.npz
 # demo videos (several MB each): copied to the Mac with scp, not committed
-results/videos/*.mp4
+results/videos/**/*.mp4

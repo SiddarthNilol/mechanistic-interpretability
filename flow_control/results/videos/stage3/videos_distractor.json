@@ -1,0 +1,32 @@
+[
+ {
+  "task": 60,
+  "state": 45,
+  "why": "chosen by hand",
+  "disturbance": "distractor",
+  "stream": 0,
+  "unsteered": false,
+  "steered": false,
+  "adaptive": true
+ },
+ {
+  "task": 60,
+  "state": 19,
+  "why": "chosen by hand",
+  "disturbance": "distractor",
+  "stream": 0,
+  "unsteered": false,
+  "steered": false,
+  "adaptive": true
+ },
+ {
+  "task": 60,
+  "state": 6,
+  "why": "chosen by hand",
+  "disturbance": "distractor",
+  "stream": 0,
+  "unsteered": false,
+  "steered": false,
+  "adaptive": true
+ }
+]
