@@ -292,3 +292,36 @@ Successes out of 50, wrong-bowl grasp episodes in brackets.
   the wrong bowl at some point. Veto and both were not rerun.
 - Numbers: `results/data/stage3_heldout_task*.jsonl`, `stage3_heldout_summary.json`; figure
   `results/figures/stage3_heldout.png`.
+
+## Gaps closed so far: raw model, plain Flow Control, adaptive Flow Control
+
+Ranges are over the Stage 2 and Stage 3 settings (tasks 12 and 60, oracle state). Successes and
+wrong-grasp episodes out of 50.
+
+| gap | raw fine-tuned model | plain Flow Control | adaptive Flow Control |
+|---|---|---|---|
+| no way to redirect the policy at run time | none; follows its own preference (20 to 26 successes nominal) | direction commands in the starting noise steer approach and carry (34 to 49) | same, plus stronger steering where the policy resists |
+| wrong object when a look-alike is nearer | grasps the wrong one in about half of nominal episodes and almost always when the look-alike is nearest (48) | partly closed: commands act early but are nearly ignored once the gripper descends (fidelity about 0), so wrong grasps stay frequent (12 to 49) | mostly closed: the push restores command following during the descent (fidelity 0.8 to 0.95); wrong grasps fall 3x to 10x (1 to 19) |
+| slow recovery after a wrong grasp | not applicable (no recovery) | succeeds only by grasping wrong, returning and re-grasping (median about 360 steps) | usually avoids the wrong grasp (median about 140 steps) |
+| no control of the gripper | not applicable | a gripper command in the starting noise is ignored (closing changes by 5 points or less) | controllable with the push (M >= 4 stops 92% to 100% of closings); a veto alone stalls the arm, useful only with adaptive steering |
+| target moved before the grasp | partial (16 to 20) | better (25 to 30) | mostly handled (43 to 45) |
+| object dropped or goal moved mid-carry | already recovers on its own (no commitment after a drop) | no gain needed | no gain needed |
+| does the rule generalize | not applicable | not applicable | gain holds on a new noise stream (slightly lower on the hardest setting) |
+
+Gaps still present:
+
+1. Privileged state: every steered result reads target and goal positions from the simulator.
+   No learned tracker yet (Stage 4).
+2. Side effects are not scored: success checks only the target, and some steered successes carry
+   a look-alike object along with it; wrong-grasp detection misses grasps that clamp only a rim.
+3. Residual failures: 20% to 40% of episodes still fail in the hardest setting, some after a
+   wrong grasp.
+4. Off-distribution actions: strong pushes produce chunks with 4x to 17x the policy's
+   conformity loss; smoothness, collisions and contact forces are unmeasured.
+5. Hand-tuned rule: gate radius, fidelity threshold and veto strength were chosen on the same
+   scenes; only the noise was held out, not the scenes.
+6. Narrow command language: one dominant-axis direction toward a point; no orientation, no
+   articulated objects (drawers, knobs), no sequences of subgoals.
+7. Narrow coverage: two single-object pick-and-place tasks; multi-stage and order-sensitive
+   tasks untested.
+8. Cost: adaptive uses up to 5 samples per replan, adding latency on a real robot.
