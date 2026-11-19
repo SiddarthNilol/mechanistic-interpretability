@@ -20,6 +20,12 @@ run: GPU arithmetic is not bit-exact between runs, so an outcome can differ from
 video shows the replay's own outcome, never Stage 1's.
 
     sbatch jobs/rollout_job.sh src/sim/demo.py --pairs 3
+
+Stage 3 (--conditions, --disturbance): any set of rollout.py conditions side by side, under a
+Stage 2 disturbance, with only a heading per panel and the outcome banner:
+
+    sbatch jobs/rollout_job.sh src/sim/demo.py --task 60 --states 45 19 6 --disturbance distractor \
+        --conditions unsteered steered adaptive --out results/videos/stage3
 """
 
 from __future__ import annotations
@@ -40,6 +46,9 @@ ROOT = HERE.parents[1]
 SCALE = 2  # 256 -> 512 pixels per half, readable on a slide
 FPS = 20  # LIBERO's control rate: the video plays in real time
 GREEN, RED, WHITE, BLACK = (40, 160, 70), (200, 50, 50), (255, 255, 255), (0, 0, 0)
+HEADINGS = {"unsteered": ("UNSTEERED", (200, 200, 200)), "steered": ("FLOW CONTROL", (255, 120, 120)),
+            "veto": ("FC + VETO", (120, 220, 140)), "adaptive": ("ADAPTIVE FLOW CONTROL", (255, 180, 90)),
+            "both": ("ADAPTIVE + VETO", (255, 140, 140))}
 
 
 def pick_scenes(path: pathlib.Path, pairs: int) -> list[tuple[int, int, str]]:
@@ -98,22 +107,29 @@ def _command_text(command) -> str:
     return f"command: {'+' if sign > 0 else '-'}{'xyz'[axis]}"
 
 
-def side_by_side(runs: dict) -> list[np.ndarray]:
+def side_by_side(runs: dict, conditions=("unsteered", "steered"), minimal: bool = False) -> list[np.ndarray]:
+    """One panel per condition. minimal: only the heading and the outcome banner (Stage 3)."""
     length = max(len(r["frames"]) for r in runs.values())
     video = []
     for i in range(length):
-        halves = []
-        for condition, color in (("unsteered", (200, 200, 200)), ("steered", (255, 120, 120))):
+        panels = []
+        for condition in conditions:
             r = runs[condition]
             j = min(i, len(r["frames"]) - 1)
             ended = i >= len(r["frames"]) - 1
             banner = (("SUCCESS", GREEN) if r["success"] else ("FAILURE", RED)) if ended else None
-            lines = [(condition.upper(), color), (f"step {j}", WHITE)]
-            if condition == "steered":
-                lines.append((_command_text(r["frame_commands"][j]), WHITE))
-            halves.append(_label(r["frames"][j], lines, banner))
-        gap = np.full((halves[0].shape[0], 8, 3), 255, dtype=np.uint8)
-        video.append(np.concatenate([halves[0], gap, halves[1]], axis=1))
+            if minimal:
+                lines = [HEADINGS.get(condition, (condition.upper(), WHITE))]
+            else:
+                lines = [(condition.upper(), (255, 120, 120) if condition == "steered" else (200, 200, 200)), (f"step {j}", WHITE)]
+                if condition == "steered":
+                    lines.append((_command_text(r["frame_commands"][j]), WHITE))
+            panels.append(_label(r["frames"][j], lines, banner))
+        gap = np.full((panels[0].shape[0], 8, 3), 255, dtype=np.uint8)
+        row = [panels[0]]
+        for panel in panels[1:]:
+            row += [gap, panel]
+        video.append(np.concatenate(row, axis=1))
     video += [video[-1]] * FPS  # hold the end for a second
     return video
 
@@ -129,6 +145,8 @@ def main():
     parser.add_argument("--task", type=int, help="with --states: play these scenes of this task instead")
     parser.add_argument("--states", type=int, nargs="+")
     parser.add_argument("--stream", type=int, default=0, help="noise stream (Stage 1 used 0)")
+    parser.add_argument("--conditions", nargs="+", default=["unsteered", "steered"], choices=rollout.CONDITIONS)
+    parser.add_argument("--disturbance", choices=rollout.D.KINDS, help="Stage 2 disturbance (default: Stage 1 episodes)")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--out", default=str(ROOT / "results" / "videos"))
     parser.add_argument("--host", default="localhost")
@@ -140,7 +158,11 @@ def main():
     else:
         scenes = pick_scenes(pathlib.Path(args.stage1), args.pairs)
     print(f"{len(scenes)} scenes: {scenes}", flush=True)
-    jobs = [(t, s, c, args.stream) for t, s, _ in scenes for c in ("unsteered", "steered")]
+    conditions = tuple(args.conditions)
+    extra = (args.disturbance,) if args.disturbance else ()
+    jobs = [(t, s, c, args.stream) + extra for t, s, _ in scenes for c in conditions]
+    minimal = conditions != ("unsteered", "steered") or bool(args.disturbance)
+    tag = f"_{args.disturbance}" if args.disturbance else ""
 
     import imageio
 
@@ -153,13 +175,14 @@ def main():
             runs = results[r["task"], r["state"]]
             print(f"task {r['task']} state {r['state']} {r['condition']}: "
                   f"{'success' if r['success'] else 'failure'} in {r['steps']} steps", flush=True)
-            if len(runs) == 2:
-                path = out / f"task{r['task']}_state{r['state']}.mp4"
-                imageio.mimwrite(path, side_by_side(runs), fps=FPS, quality=8, macro_block_size=8)
+            if len(runs) == len(conditions):
+                path = out / f"task{r['task']}{tag}_state{r['state']}.mp4"
+                imageio.mimwrite(path, side_by_side(runs, conditions, minimal), fps=FPS, quality=8, macro_block_size=8)
                 print(f"wrote {path}", flush=True)
     summary = [{"task": t, "state": s, "why": why,
-                **{c: results[t, s][c]["success"] for c in ("unsteered", "steered")}} for t, s, why in scenes]
-    (out / "videos.json").write_text(json.dumps(summary, indent=1))
+                "disturbance": args.disturbance, "stream": args.stream,
+                **{c: results[t, s][c]["success"] for c in conditions}} for t, s, why in scenes]
+    (out / f"videos{tag}.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1))
 
 
